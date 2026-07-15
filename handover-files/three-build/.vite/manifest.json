@@ -1,0 +1,25 @@
+{
+  "src/app/layouts/RootLayout/RootLayout.astro?astro&type=script&index=0&lang.ts": {
+    "file": "assets/app.js",
+    "name": "RootLayout.astro_astro_type_script_index_0_lang",
+    "src": "src/app/layouts/RootLayout/RootLayout.astro?astro&type=script&index=0&lang.ts",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/features/canvas/model/World.ts",
+      "src/features/canvas/model/World.ts"
+    ]
+  },
+  "src/features/canvas/model/World.ts": {
+    "file": "assets/World.js",
+    "name": "World",
+    "src": "src/features/canvas/model/World.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/app/layouts/RootLayout/RootLayout.astro?astro&type=script&index=0&lang.ts"
+    ]
+  },
+  "style.css": {
+    "file": "assets/app.css",
+    "src": "style.css"
+  }
+}

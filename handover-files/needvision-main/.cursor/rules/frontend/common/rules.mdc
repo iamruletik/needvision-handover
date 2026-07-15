@@ -1,0 +1,8 @@
+---
+description: Общие правила (frontend)
+globs: frontend/**/*
+alwaysApply: true
+---
+
+- Отвечай кратко.
+- Используй pnpm.

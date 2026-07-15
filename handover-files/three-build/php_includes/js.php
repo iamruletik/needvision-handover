@@ -1,0 +1,1 @@
+<script type="module" src="/local/templates/main/frontend/build/assets/app.js"></script>

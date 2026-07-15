@@ -1,0 +1,7 @@
+FRONTEND_SRC_PATTERN="frontend/"
+
+if git diff --cached --name-only | grep --quiet "$FRONTEND_SRC_PATTERN"
+then
+    cd frontend
+    npx lint-staged --allow-empty
+fi

@@ -1,0 +1,28 @@
+### Запрет на мерж дева
+
+FORBIDDEN_BRANCH="dev"
+EXCEPTION_BRANCH_REGEX="^dev-.*"
+MSG_FILE_NAME="COMMIT_EDITMSG"
+
+MSG=$(git rev-parse --git-path $MSG_FILE_NAME)
+
+# Check if the file exists
+if [[ -f "$MSG" ]]; then
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+    if [[ $(< "$MSG") =~ ^Merge\ branch\ \'"$FORBIDDEN_BRANCH".* && ! $CURRENT_BRANCH =~ $EXCEPTION_BRANCH_REGEX && $CURRENT_BRANCH != $FORBIDDEN_BRANCH ]]; then
+        echo "---"
+        echo "❌ Merging from $FORBIDDEN_BRANCH is forbidden 🤡"
+        echo "Reverting merge..."
+        git reset --hard HEAD~1
+        echo "✅ Branch '$CURRENT_BRANCH' has been reset to the previous commit."
+        echo "---"
+        exit 1
+    fi
+else
+    echo "$MSG_FILE_NAME file does not exist."
+    exit 1
+fi
+
+command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'post-commit' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks').\n"; exit 2; }
+        git lfs post-commit "$@"

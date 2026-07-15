@@ -1,0 +1,27 @@
+new_branch=$(git branch --show-current)
+
+# These branches already exist and should always be checked out (and especially not be deleted)
+if [[ $new_branch =~ ^dev|stage|master$ ]]
+then
+    exit 0
+fi
+
+base_branch=$(git rev-parse --abbrev-ref @{-1})
+base_head=$(git rev-parse @{-1})
+new_head=$(git rev-parse HEAD)
+disallowed_branch_name="dev"
+EXCEPTION_BRANCH_REGEX="^dev-.*"
+
+# First check the name of the base branch
+# Then compare the hashes of the last commits
+if [[ $base_branch = $disallowed_branch_name && $base_head = $new_head && new_branch && ! $new_branch =~ $EXCEPTION_BRANCH_REGEX ]]; then
+    echo ""
+    echo "❌ You are trying to create a new branch from '$disallowed_branch_name'. It's forbidden."
+    echo "Switching to '$disallowed_branch_name' and deleting the new branch..."
+    echo "-----------------"
+    git checkout --ignore-other-worktrees $disallowed_branch_name && git branch -D $new_branch
+    exit 1
+fi
+
+command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'post-checkout' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks').\n"; exit 2; }
+        git lfs post-checkout "$@"

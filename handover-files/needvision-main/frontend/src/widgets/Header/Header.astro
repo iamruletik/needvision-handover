@@ -1,0 +1,19 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+export type Props = HTMLAttributes<'div'>;
+
+const { ...props } = Astro.props;
+---
+
+<div class:list={['header', props.class]} {...props}>
+    <div class="wrapper header__wrapper">
+        <img
+            src="/static/img/logo.svg"
+            alt="NeedVision logo"
+            class="img-fluid header__logo js-header-logo"
+            width="338"
+            height="40"
+        />
+    </div>
+</div>

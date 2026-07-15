@@ -1,0 +1,8 @@
+.vscode
+logs
+/node_modules
+.cursor/data/gitlab.json
+*.log
+context_portal
+.playwright-mcp/
+__pycache__/

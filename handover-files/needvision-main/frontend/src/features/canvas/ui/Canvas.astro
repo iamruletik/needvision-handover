@@ -1,0 +1,11 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+export type Props = HTMLAttributes<'div'>;
+
+const { ...props } = Astro.props;
+---
+
+<div class:list={['canvas-container js-canvas-container', props.class]} {...props}>
+    <div class="canvas-wrapper js-canvas-wrapper" data-media="(min-width: 577px)"></div>
+</div>

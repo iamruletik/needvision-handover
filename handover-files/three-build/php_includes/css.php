@@ -1,0 +1,1 @@
+<link rel="stylesheet" href="/local/templates/main/frontend/build/assets/app.css">
