@@ -28,7 +28,7 @@ handover-files/       previous developer's work — reference/backup, do not edi
 
 ## Stack
 
-GSAP (ScrollTrigger, Observer) · Lenis · three.js · Barba (planned) · Vite
+GSAP (ScrollTrigger, Observer) · Lenis · three.js · Barba · Vite
 
 ## Sites
 
