@@ -1,0 +1,267 @@
+/* Кастомные стили под скрипты. */
+
+
+/* 0. Скрываем scrollbar сайта полностью.
+   Скролл работает, бар не отображается. Поскольку бара нет совсем,
+   viewport не «прыгает» при overflow:hidden от preloader/модалок —
+   scrollbar-gutter тут уже не нужен. */
+html, body {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE 10+, старый Edge */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;               /* Chrome, Safari, новый Edge */
+}
+
+
+/* 0.1 Lenis smooth scroll — нативный body-скролл выключаем,
+   Lenis сам управляет позицией. */
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+/* Generic fade-in: всё что в Webflow помечено data-smooth="true" —
+   стартует невидимым, scroll-reveal.js его проявит. Без этой страховки
+   контент мигает до того как JS отстреляет ScrollTrigger. */
+[data-smooth="true"] {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+
+/* stages_word — слова после split в stages-animation.js. inline-block
+   нужен для transform, но длинное слово ('представьте', 'обсуждаем')
+   могло выходить за родителя 28vw и давать hscroll. max-width:100%
+   + word-break ограничивают слово в пределах контейнера. */
+.stages_word {
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+
+/* 0.1 Page transition overlay — fade между страницами.
+   Поверх всего кроме preloader'а (preloader 99999). */
+.page-transition-overlay {
+  position: fixed;
+  inset: 0;
+  background: #040101;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 99998;
+  transition: opacity 380ms cubic-bezier(0.65, 0, 0.35, 1);
+  will-change: opacity;
+}
+.page-transition-overlay.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+/* 1. Размытая «корочка» под навигацией */
+.nav-blur-bg {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  -webkit-mask-image: linear-gradient(to bottom,
+      black 0%,
+      black 60%,
+      rgba(0, 0, 0, 0.6) 80%,
+      rgba(0, 0, 0, 0.2) 92%,
+      transparent 100%
+  );
+  mask-image: linear-gradient(to bottom,
+      black 0%,
+      black 60%,
+      rgba(0, 0, 0, 0.6) 80%,
+      rgba(0, 0, 0, 0.2) 92%,
+      transparent 100%);
+}
+
+
+/* 2. Фонарик в секции partner.
+   sections/partner-spotlight.js двигает --mouse-x / --mouse-y. */
+.spotlight-overlay {
+  pointer-events: none;
+
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-size: 60vw;
+
+  background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.85) 50%,
+      rgba(0, 0, 0, 1) 88%
+  );
+}
+
+
+/* 2.1 Cases-слайдер: курсор-pointer (пальчик) на самих карточках.
+   Drag-zone родителя имеет cursor:grab → дети наследуют. На контенте
+   карточки переопределяем на pointer — визуально подсказывает «клик»,
+   а не «таскать». Драг через Observer всё равно работает. */
+.case_card-content,
+.case_card-content * {
+  cursor: pointer;
+}
+
+
+/* 3. Swiper-версия team-слайдера. Не используется если активна кастомная
+   sliders/team-slider.js. */
+.swiper-slide {
+  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  width: 6vw !important;
+  height: 8vw !important;
+  opacity: 0.6;
+}
+
+.swiper-slide.swiper-slide-active {
+  width: 22vw !important;
+  height: 32vw !important;
+  opacity: 1;
+}
+
+/* Прячем имя у неактивных карточек */
+.swiper-slide .team_member-name {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.swiper-slide.swiper-slide-active .team_member-name {
+  opacity: 1;
+}
+
+
+/* 4. Бургер-иконка в .nav-menu, морф в крестик.
+   Embed внутри .nav-menu:
+     <div class="menu-icon">
+       <span class="menu-icon__bar menu-icon__bar--top"></span>
+       <span class="menu-icon__bar menu-icon__bar--bot"></span>
+     </div>
+   navigation/nav-scroll.js тогглит .is-open. Цвет через currentColor —
+   наследуется от .menu_control-bar.
+
+   Геометрия: контейнер 1.4vw × 0.65vw. В закрытом полоски при top/bottom
+   0.125vw → расстояние от верха до низа ровно 0.4vw. В открытом обе
+   уезжают в центр (translateY ±0.165vw) и поворачиваются на ±30° —
+   крест без изменения длины. Толщина 0.07vw в обоих состояниях. */
+.menu-icon {
+  position: relative;
+  width: 1.4vw;
+  height: 0.65vw;
+  flex-shrink: 0;
+  display: inline-block;
+  color: inherit;
+  cursor: pointer;
+}
+.menu-icon__bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0.07vw;
+  background: currentColor;
+  transform-origin: center center;
+  /* expo-like easing — лёгкое начало и долгая плавная доводка */
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.menu-icon__bar--top { top: 0.125vw; }
+.menu-icon__bar--bot { bottom: 0.125vw; }
+
+/* Открытое: в центр + ±30° (более «узкий» крест) */
+.menu-icon.is-open .menu-icon__bar--top {
+  transform: translateY(0.165vw) rotate(30deg);
+}
+.menu-icon.is-open .menu-icon__bar--bot {
+  transform: translateY(-0.165vw) rotate(-30deg);
+}
+
+
+/* 5. Страница /cases — активная строка + заливка.
+   Одна .case-row активна одновременно (по умолчанию первая).
+   Hover → она становится активной, старая теряет.
+   Заливка через ::before scaleY(0→1) с transform-origin:top —
+   GPU-only, без reflow. Сверху вниз. */
+.case-row {
+  position: relative;
+  background-color: transparent;
+  overflow: hidden;
+  transition: color 0.3s ease;
+}
+.case-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #FF6038;
+  transform: scaleY(0);
+  transform-origin: center top;
+  /* НЕТ transition — уход из активного состояния (sливание заливки)
+     происходит мгновенно. Анимация только на вход (см. .is-active::before). */
+  z-index: 0;
+  pointer-events: none;
+}
+/* Контент над заливкой */
+.case-row > * { position: relative; z-index: 1; }
+
+.case-row.is-active {
+  color: #000000;
+}
+.case-row.is-active::before {
+  transform: scaleY(1);
+  /* Transition только в активном состоянии — заливка въезжает сверху
+     вниз плавно, а на выходе (когда класс снимается) её нет → мгновенно. */
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.case-row_logo {
+  transition: filter 0.3s ease;
+}
+.case-row.is-active .case-row_logo {
+  filter: brightness(0);
+}
+
+/* Стрелка: в Webflow стоит display:none. Держим block постоянно,
+   «невидимость» через width:0 → 1vw (его можно анимировать). */
+.case-row_arrow {
+  display: block !important;
+  width: 0vw;
+  overflow: hidden;
+  transition: width 0.3s ease;
+}
+.case-row.is-active .case-row_arrow { width: 1vw; }
+
+/* Preview в сайдбаре: заливка снизу вверх через clip-path inset.
+   inset(100% 0 0 0) = скрыто, inset(0% 0 0 0) = полностью видно.
+   Top-inset 100 → 0 = раскрывается снизу вверх. */
+.cases-sidebar_display {
+  position: relative;
+  overflow: hidden;
+}
+.cases-sidebar_preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 1;
+  clip-path: inset(100% 0 0 0);
+  -webkit-clip-path: inset(100% 0 0 0);
+  will-change: clip-path;
+}
