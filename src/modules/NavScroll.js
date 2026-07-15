@@ -2,9 +2,9 @@ import { gsap, ScrollTrigger } from '../core/gsap'
 import { Module } from '../core/Module'
 
 //Navigation plate. Compresses on scroll, opens the dropdown menu on click,
-//inverts colors over .stages. Three modes:
-//  desktop  — scroll scrubs the compress timeline
-//  mobile   — timeline autoplays once past a threshold (scrub lags on weak GPUs)
+//inverts colors over .stages. Two modes:
+//  scroll   — timeline plays forward once past a threshold, reverses back at the top
+//             (no scrub: scrubbing parks mid-frames with half-masked text)
 //  static   — body[data-nav-mode="static"] in Webflow, plate starts compressed (inner pages)
 
 //Compress Timeline — logo lands first, everything else follows after TOP_DELAY
@@ -13,7 +13,7 @@ const COMPRESSED_WIDTH = '24vw'
 const LOGO_SCALE = 0.47
 const OVERLAY_RADIUS_OPEN = '0.8vw'
 const OVERLAY_RADIUS_CLOSED = '1.5vw' //matches the Webflow radius — plate returns to its designed look
-const SCRUB_DISTANCE = '+=300vw'
+const COMPRESS_TRIGGER_START = '3.47vw top' //scroll depth that flips the plate
 
 //Profit badge — must finish exactly when the plate is fully compressed (POSITION + DURATION = TOP_DELAY + 0.5)
 const PROFIT_POSITION = 0.29
@@ -32,7 +32,6 @@ const INVERT_DARK = { background: '#040101', textColor: '#ffffff', logoFilter: '
 const INVERT_LIGHT = { background: '#ffffff', textColor: '#000000', logoFilter: 'invert(0)', iconFilter: 'invert(1)' }
 
 const MOBILE_MEDIA = '(max-width: 991px)'
-const MOBILE_TRIGGER_START = '3.47vw top'
 
 export class NavScroll extends Module {
 
@@ -159,41 +158,23 @@ export class NavScroll extends Module {
             return
         }
 
-        if (this.isMobile) {
-            //Play/reverse over fixed time instead of scrub — no jitter on touch ticks
-            this.animate(ScrollTrigger.create({
-                trigger: 'body',
-                start: MOBILE_TRIGGER_START,
-                onEnter: () => {
-                    if (this.menuOpen) return
-                    this.compressTimeline.play()
-                    this.compressState.progress = 1
-                },
-                onLeaveBack: () => {
-                    if (this.menuOpen) return
-                    this.compressTimeline.reverse()
-                    this.compressState.progress = 0
-                },
-            }))
-            return
-        }
-
-        //Desktop — scroll drives a proxy, proxy drives the timeline (paused while the menu is open)
-        this.animate(gsap.to(this.compressState, {
-            progress: 1,
-            ease: 'none',
-            scrollTrigger: {
-                trigger: 'body',
-                start: 'top top',
-                end: SCRUB_DISTANCE,
-                scrub: 1,
+        //Play/reverse over the timeline's own duration — every frame is a designed frame
+        this.animate(ScrollTrigger.create({
+            trigger: 'body',
+            start: COMPRESS_TRIGGER_START,
+            onEnter: () => {
+                if (this.menuOpen) return
+                this.compressTimeline.play()
+                this.compressState.progress = 1
             },
-            onUpdate: () => {
-                if (!this.menuOpen) this.compressTimeline.progress(this.compressState.progress)
+            onLeaveBack: () => {
+                if (this.menuOpen) return
+                this.compressTimeline.reverse()
+                this.compressState.progress = 0
             },
         }))
 
-        this.buildInvertTimeline()
+        if (!this.isMobile) this.buildInvertTimeline()
     }
 
     //Invert over .stages — .to() only, capturing current state instead of forcing from-values over the compress timeline
