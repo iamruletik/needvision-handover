@@ -2,6 +2,8 @@ import 'lenis/dist/lenis.css'
 import './styles/main.css'
 import { SmoothScroll } from './core/SmoothScroll'
 import { Clock } from './modules/Clock'
+import { NavScroll } from './modules/NavScroll'
+import { NavCtaInvert } from './modules/NavCtaInvert'
 import { AmountCounter } from './modules/AmountCounter'
 import { Marquee } from './modules/Marquee'
 import { ScrollReveal } from './modules/ScrollReveal'
@@ -12,6 +14,8 @@ export const smoothScroll = new SmoothScroll()
 //Page modules — each mounts safely and skips silently when its elements are missing
 export const modules = [
     new Clock(),
+    new NavScroll(),
+    new NavCtaInvert(),
     new AmountCounter(),
     new Marquee(),
     new ScrollReveal(),
