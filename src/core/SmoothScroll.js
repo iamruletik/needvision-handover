@@ -21,11 +21,16 @@ export class SmoothScroll {
             duration: SCROLL_DURATION,
             easing: expoOut,
             wheelMultiplier: WHEEL_MULTIPLIER,
-            smoothTouch: false,
+            syncTouch: false,
         })
 
         //Without this scrub animations lag one frame behind the scroll position
-        this.lenis.on('scroll', ScrollTrigger.update)
+        this.lenis.on('scroll', () => ScrollTrigger.update())
+
+        console.log('[SmoothScroll] Lenis created, scrollable limit:', this.lenis.limit)
+        window.addEventListener('load', () => {
+            console.log('[SmoothScroll] after load — limit:', this.lenis.limit, 'isStopped:', this.lenis.isStopped)
+        })
 
         //Own rAF, not gsap.ticker — the ticker sleeps between tweens and Lenis would stall mid-glide
         const tick = (time) => {

@@ -16,3 +16,7 @@ export const modules = [
     new Marquee(),
     new ScrollReveal(),
 ].map((module) => module.mount())
+
+//Debug handle — poke around from the browser console via window.app
+window.app = { smoothScroll, modules }
+console.log('[main] script loaded, modules mounted:', modules.map((module) => module.constructor.name).join(', '))
