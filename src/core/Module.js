@@ -56,6 +56,18 @@ export class Module {
         this.frames.push(requestAnimationFrame(callback))
     }
 
+    //Continuous rAF loop — one tracked id slot, cancelled on destroy
+    loop(callback) {
+        let handle = { id: 0 }
+        const step = (time) => {
+            callback(time)
+            handle.id = requestAnimationFrame(step)
+        }
+        handle.id = requestAnimationFrame(step)
+        this.loops = this.loops || []
+        this.loops.push(handle)
+    }
+
     //Cleanup
 
     destroy() {
@@ -64,11 +76,13 @@ export class Module {
         this.observers.forEach((observer) => observer.disconnect())
         this.animations.forEach((animation) => animation.kill?.())
         this.frames.forEach((id) => cancelAnimationFrame(id))
+        this.loops?.forEach((handle) => cancelAnimationFrame(handle.id))
 
         this.listeners = []
         this.timers = []
         this.observers = []
         this.animations = []
         this.frames = []
+        this.loops = []
     }
 }

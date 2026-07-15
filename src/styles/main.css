@@ -1,20 +1,6 @@
 /* Custom styles on top of Webflow. Ported from the legacy custom.css, plus new module styles. */
 
 
-/* Scrollbar — hidden completely. Scroll works, no bar, no viewport jump on overflow:hidden. */
-html,
-body {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-}
-
-
 /* Scroll Reveal — [data-smooth="true"] starts hidden (no flash before JS), ScrollReveal.js flips the class */
 [data-smooth='true'] {
     opacity: 0;
@@ -159,6 +145,12 @@ body::-webkit-scrollbar {
 }
 .menu-icon.is-open .menu-icon__bar--bot {
     transform: translateY(-0.165vw) rotate(-30deg);
+}
+
+
+/* Bento — GSAP moves transform only; CSS top offsets on ._1/._4 need non-static position */
+.bento_card.is-parallax {
+    position: relative;
 }
 
 
