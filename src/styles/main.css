@@ -1,0 +1,238 @@
+/* Custom styles on top of Webflow. Ported from the legacy custom.css, plus new module styles. */
+
+
+/* Scrollbar — hidden completely. Scroll works, no bar, no viewport jump on overflow:hidden. */
+html,
+body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+
+/* Scroll Reveal — [data-smooth="true"] starts hidden (no flash before JS), ScrollReveal.js flips the class */
+[data-smooth='true'] {
+    opacity: 0;
+    transform: translateY(4.17vw);
+    transition:
+        opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+}
+[data-smooth='true'].is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+
+/* Marquee — Marquee.js clones content and sets --marquee-duration, CSS does the scrolling */
+[data-marquee-ready] {
+    display: flex;
+    flex-wrap: nowrap;
+    width: max-content;
+    will-change: transform;
+    animation: marquee-scroll var(--marquee-duration, 30s) linear infinite;
+}
+[data-marquee-ready][data-marquee-reverse] {
+    animation-direction: reverse;
+}
+@keyframes marquee-scroll {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+
+/* Amount Counter — AmountCounter.js builds digit slots over 0-9 strips and rolls them */
+.counter {
+    display: inline-flex;
+    overflow: hidden;
+    font-variant-numeric: tabular-nums; /* equal digit widths — no jitter while rolling */
+}
+.counter__slot {
+    display: inline-block;
+    height: 1em;
+    line-height: 1;
+    overflow: hidden;
+}
+.counter__strip {
+    display: block;
+    will-change: transform;
+}
+.counter__strip span {
+    display: block;
+    height: 1em;
+    line-height: 1;
+}
+.counter__separator {
+    display: inline-block;
+    line-height: 1;
+    white-space: pre;
+}
+
+
+/* Reduced Motion — reveals appear instantly, marquees stand still */
+@media (prefers-reduced-motion: reduce) {
+    [data-smooth='true'] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+    [data-marquee-ready] {
+        animation: none;
+    }
+}
+
+
+/* Nav — blurred crust under the navigation */
+.nav-blur-bg {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    -webkit-mask-image: linear-gradient(to bottom,
+        black 0%,
+        black 60%,
+        rgba(0, 0, 0, 0.6) 80%,
+        rgba(0, 0, 0, 0.2) 92%,
+        transparent 100%);
+    mask-image: linear-gradient(to bottom,
+        black 0%,
+        black 60%,
+        rgba(0, 0, 0, 0.6) 80%,
+        rgba(0, 0, 0, 0.2) 92%,
+        transparent 100%);
+}
+
+
+/* Partner Spotlight — PartnerSpotlight.js moves --mouse-x / --mouse-y */
+.spotlight-overlay {
+    pointer-events: none;
+
+    --mouse-x: 50%;
+    --mouse-y: 50%;
+    --spotlight-size: 60vw;
+
+    background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.85) 50%,
+        rgba(0, 0, 0, 1) 88%);
+}
+
+
+/* Cases Slider — pointer cursor on card content, drag-zone parent has grab */
+.case_card-content,
+.case_card-content * {
+    cursor: pointer;
+}
+
+
+/* Burger Icon — morphs to a cross, NavScroll.js toggles .is-open. Color via currentColor. */
+.menu-icon {
+    position: relative;
+    width: 1.4vw;
+    height: 0.65vw;
+    flex-shrink: 0;
+    display: inline-block;
+    color: inherit;
+    cursor: pointer;
+}
+.menu-icon__bar {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 0.07vw;
+    background: currentColor;
+    transform-origin: center center;
+    transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+}
+.menu-icon__bar--top { top: 0.125vw; }
+.menu-icon__bar--bot { bottom: 0.125vw; }
+
+.menu-icon.is-open .menu-icon__bar--top {
+    transform: translateY(0.165vw) rotate(30deg);
+}
+.menu-icon.is-open .menu-icon__bar--bot {
+    transform: translateY(-0.165vw) rotate(-30deg);
+}
+
+
+/* Stages — words after split stay inside their 28vw parent */
+.stages_word {
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+
+/* Cases Page — active row fill (enters animated, leaves instantly), arrow, sidebar preview */
+.case-row {
+    position: relative;
+    background-color: transparent;
+    overflow: hidden;
+    transition: color 0.3s ease;
+}
+.case-row::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: #FF6038;
+    transform: scaleY(0);
+    transform-origin: center top;
+    z-index: 0;
+    pointer-events: none;
+}
+.case-row > * {
+    position: relative;
+    z-index: 1;
+}
+
+.case-row.is-active {
+    color: #000000;
+}
+.case-row.is-active::before {
+    transform: scaleY(1);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.case-row_logo {
+    transition: filter 0.3s ease;
+}
+.case-row.is-active .case-row_logo {
+    filter: brightness(0);
+}
+
+/* Arrow is display:none in Webflow — keep block, animate width instead */
+.case-row_arrow {
+    display: block !important;
+    width: 0vw;
+    overflow: hidden;
+    transition: width 0.3s ease;
+}
+.case-row.is-active .case-row_arrow {
+    width: 1vw;
+}
+
+/* Sidebar preview reveals bottom-up through clip-path */
+.cases-sidebar_display {
+    position: relative;
+    overflow: hidden;
+}
+.cases-sidebar_preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: 1;
+    clip-path: inset(100% 0 0 0);
+    -webkit-clip-path: inset(100% 0 0 0);
+    will-change: clip-path;
+}

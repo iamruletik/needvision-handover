@@ -1,4 +1,18 @@
-// Single entry point: every site module gets imported from here,
-// Webflow only loads this one file.
+import 'lenis/dist/lenis.css'
+import './styles/main.css'
+import { SmoothScroll } from './core/SmoothScroll'
+import { Clock } from './modules/Clock'
+import { AmountCounter } from './modules/AmountCounter'
+import { Marquee } from './modules/Marquee'
+import { ScrollReveal } from './modules/ScrollReveal'
 
-console.log("hello world — vite dev server is running");
+//Single Lenis for the whole site — modules that need scroll position import nothing, they get it from here
+export const smoothScroll = new SmoothScroll()
+
+//Page modules — each mounts safely and skips silently when its elements are missing
+export const modules = [
+    new Clock(),
+    new AmountCounter(),
+    new Marquee(),
+    new ScrollReveal(),
+].map((module) => module.mount())
