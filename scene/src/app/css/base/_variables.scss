@@ -1,0 +1,66 @@
+/**
+  * @tokens Others
+  */
+$btn-disabled-opacity: 0.5;
+$app-default-duration: 0.25s;
+
+/**
+  * @tokens-end
+  */
+
+/**
+  * @tokens Easings
+  * @presenter Easing
+  */
+$app-default-easing: cubic-bezier(0.25, 0.25, 0, 1);
+
+/**
+  * @tokens-end
+  */
+
+/**
+  * @tokens ColorPalette
+  * @presenter Color
+  */
+$primary: #000;
+
+/**
+  * @tokens-end
+  */
+
+/**
+  * @tokens Colors
+  * @presenter Color
+  */
+$body-bg: #000;
+$body-color: #fff;
+$bg: #f1f0ea;
+$danger: #ff4211;
+
+/**
+  * @tokens-end
+  */
+
+/**
+  * @tokens Fonts
+  * @presenter FontFamily
+  */
+$font-fallback:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    'Noto Sans',
+    'Liberation Sans',
+    sans-serif,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    'Noto Color Emoji';
+$font-family: $font-fallback;
+
+/**
+  * @tokens-end
+  */

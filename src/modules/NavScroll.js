@@ -33,6 +33,17 @@ const INVERT_LIGHT = { background: '#ffffff', textColor: '#000000', logoFilter: 
 
 const MOBILE_MEDIA = '(max-width: 991px)'
 
+//Pages where the plate starts compressed with no scroll animation.
+//Keyed by Barba namespace — body attributes never update during Barba swaps.
+const STATIC_NAV_NAMESPACES = ['cases']
+
+function currentNamespace() {
+    let container = document.querySelector('[data-barba="container"]')
+    //Fallback until data-barba-namespace is set in Webflow
+    return container?.dataset.barbaNamespace
+        || (window.location.pathname.includes('cases') ? 'cases' : 'home')
+}
+
 export class NavScroll extends Module {
 
     setup() {
@@ -45,7 +56,8 @@ export class NavScroll extends Module {
         this.menuIcon = document.querySelector('.menu-icon')
         this.menuBackdrop = document.querySelector('.menu_backdrop')
 
-        this.isStatic = document.body.dataset.navMode === 'static'
+        //Namespace only — body[data-nav-mode] is frozen at first load and lies after Barba swaps
+        this.isStatic = STATIC_NAV_NAMESPACES.includes(currentNamespace())
         this.isMobile = window.matchMedia(MOBILE_MEDIA).matches
         this.menuOpen = false
         this.menuTimeline = null

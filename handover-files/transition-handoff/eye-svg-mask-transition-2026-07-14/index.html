@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Desktop demo for an SVG eye-mask page transition.">
+  <title>Eye SVG Mask Transition Demo</title>
+  <link rel="icon" href="data:,">
+  <script>
+    document.documentElement.classList.remove('no-js');
+    (function () {
+      try {
+        if (sessionStorage.getItem('eyeTransitionPending') === '1') {
+          document.documentElement.classList.add('has-eye-transition-cover');
+        }
+      } catch (error) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-transition-debug="true">
+  <div class="eye-transition is-idle" data-eye-transition aria-hidden="true">
+    <svg
+      class="eye-transition__svg"
+      viewBox="0 0 1366 768"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <mask id="eye-transition-mask" maskUnits="userSpaceOnUse">
+          <rect class="eye-mask-cover" width="1366" height="768" fill="#fff"></rect>
+          <g class="eye-cover-scale">
+            <g class="eye-aperture-scale">
+              <path
+                class="eye-path"
+                fill="#000"
+                d="M1354.53,367.56c-145.56,0-446.78,239.56-671.53,239.56-224.75,0-525.97-239.56-671.53-239.56,145.56,0,446.78-239.56,671.53-239.56,224.75,0,525.97,239.56,671.53,239.56Z"
+              ></path>
+            </g>
+          </g>
+        </mask>
+      </defs>
+      <rect class="eye-transition__blackout" width="1366" height="768" fill="#000" mask="url(#eye-transition-mask)"></rect>
+    </svg>
+  </div>
+
+  <main class="demo-page" data-transition-trigger aria-label="Запустить переход" role="button" tabindex="0">
+    <img class="demo-page__background" src="./assets/draft.png" alt="">
+  </main>
+
+  <script src="./transition.js"></script>
+</body>
+</html>

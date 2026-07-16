@@ -1,0 +1,222 @@
+:root {
+  --transition-close-duration: 750ms;
+  --transition-open-duration: 416.667ms;
+  --transition-gap: 50ms;
+
+  --transition-close-ease: cubic-bezier(0.655, 0, 0.111, 1);
+  --transition-open-ease: cubic-bezier(0.626, 0, 0.35, 1);
+
+  --transition-close-aperture-ease: cubic-bezier(0.333, 0, 0.108, 1);
+  --transition-close-cover-ease: var(--transition-close-ease);
+
+  --transition-open-aperture-ease: var(--transition-open-ease);
+  --transition-open-cover-ease: cubic-bezier(0.618, 0, 0.35, 1);
+
+  --eye-cover-open-scale: 2.55;
+  --eye-cover-closed-scale: 1;
+  --eye-aperture-open-scale-y: 1;
+  --eye-aperture-closed-scale-y: 0;
+  --eye-center-x: 683px;
+  --eye-center-y: 367.56px;
+  --eye-y-compensation: 16.44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: #f7f3ed;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #000;
+}
+
+.demo-page {
+  position: fixed;
+  inset: 0;
+  min-height: 100vh;
+  cursor: pointer;
+}
+
+.demo-page:focus-visible {
+  outline: 2px solid #93e7ff;
+  outline-offset: -8px;
+}
+
+.demo-page__background {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.eye-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  width: 100%;
+  height: 100%;
+  contain: layout paint;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.eye-transition.is-closing,
+.eye-transition.is-covered,
+.eye-transition.is-opening,
+.has-eye-transition-cover .eye-transition {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.eye-transition__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.eye-cover-scale,
+.eye-aperture-scale {
+  transform-box: view-box;
+  transform-origin: var(--eye-center-x) var(--eye-center-y);
+}
+
+.eye-cover-scale {
+  transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+}
+
+.eye-aperture-scale {
+  transform: scaleY(var(--eye-aperture-open-scale-y));
+}
+
+.eye-transition.is-closing .eye-cover-scale,
+.eye-transition.is-closing .eye-aperture-scale,
+.eye-transition.is-opening .eye-cover-scale,
+.eye-transition.is-opening .eye-aperture-scale {
+  will-change: transform;
+}
+
+.eye-transition.is-closing .eye-cover-scale {
+  animation: eye-cover-close var(--transition-close-duration) var(--transition-close-cover-ease) both;
+}
+
+.eye-transition.is-closing .eye-aperture-scale {
+  animation: eye-aperture-close var(--transition-close-duration) var(--transition-close-aperture-ease) both;
+}
+
+.eye-transition.is-covered .eye-cover-scale,
+.has-eye-transition-cover .eye-cover-scale {
+  transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+}
+
+.eye-transition.is-covered .eye-aperture-scale,
+.has-eye-transition-cover .eye-aperture-scale {
+  transform: scaleY(var(--eye-aperture-closed-scale-y));
+}
+
+.eye-transition.is-covered .eye-path,
+.has-eye-transition-cover .eye-path {
+  visibility: hidden;
+}
+
+.eye-transition.is-opening .eye-cover-scale {
+  animation: eye-cover-open var(--transition-open-duration) var(--transition-open-cover-ease) both;
+}
+
+.eye-transition.is-opening .eye-aperture-scale {
+  animation: eye-aperture-open var(--transition-open-duration) var(--transition-open-aperture-ease) both;
+}
+
+@keyframes eye-cover-close {
+  from {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+  }
+
+  to {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+  }
+}
+
+@keyframes eye-aperture-close {
+  from {
+    transform: scaleY(var(--eye-aperture-open-scale-y));
+  }
+
+  to {
+    transform: scaleY(var(--eye-aperture-closed-scale-y));
+  }
+}
+
+@keyframes eye-cover-open {
+  from {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+  }
+
+  to {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+  }
+}
+
+@keyframes eye-aperture-open {
+  from {
+    transform: scaleY(var(--eye-aperture-closed-scale-y));
+  }
+
+  to {
+    transform: scaleY(var(--eye-aperture-open-scale-y));
+  }
+}
+
+.transition-gui.lil-gui {
+  --width: 360px;
+  z-index: 2147483002;
+}
+
+.transition-gui .title,
+.transition-gui .controller,
+.transition-gui .widget,
+.transition-gui input {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.transition-gui-graph {
+  padding: 8px;
+  border-bottom: 1px solid #1f1f1f;
+  background: #111;
+}
+
+.transition-gui-graph canvas {
+  display: block;
+  width: 100%;
+  height: 132px;
+  border: 1px solid #303030;
+  border-radius: 4px;
+  background: #080808;
+  cursor: crosshair;
+}
+
+.transition-gui-css {
+  margin-top: 7px;
+  overflow: hidden;
+  color: #bfbfbf;
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-transition.is-closing .eye-cover-scale,
+  .eye-transition.is-closing .eye-aperture-scale,
+  .eye-transition.is-opening .eye-cover-scale,
+  .eye-transition.is-opening .eye-aperture-scale {
+    animation-duration: 1ms;
+  }
+}

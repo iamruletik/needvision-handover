@@ -1,0 +1,50 @@
+---
+/* eslint-disable no-restricted-syntax */
+import type { PageMeta } from '@/shared/model/types';
+import '@/app/css/app.scss';
+import Header from '@/widgets/Header';
+
+type Props = {
+    htmlClass?: string;
+    meta: PageMeta;
+};
+
+const { HOST } = import.meta.env;
+const { htmlClass, meta } = Astro.props;
+const { pathname } = Astro.url;
+---
+
+<html lang="ru" class:list={['no-js', htmlClass]}>
+    <head>
+        <meta charset="utf-8" />
+        <title>{meta.title}</title>
+        <meta name="viewport" content="width=device-width, viewport-fit=cover" />
+        <meta name="description" content={meta.description} />
+
+        {HOST && <meta property="og:url" content={`${(HOST || '').replace(/\/$/, '')}${pathname}`} />}
+        <meta property="og:locale" content="ru" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:image" content={meta.ogImage} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:image" content={meta.ogImage} />
+        <meta name="twitter:title" content={meta.title} />
+        <meta name="twitter:description" content={meta.description} />
+
+        <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg" />
+
+        <script is:inline>
+            document.documentElement.classList.replace('no-js', 'js');
+        </script>
+        <script src="@/app/app.ts"></script>
+
+        <slot name="head" />
+    </head>
+    <body>
+        <main class="main">
+            <Header />
+            <slot />
+        </main>
+    </body>
+</html>

@@ -1,0 +1,8 @@
+@use 'base/custom-properties';
+@use 'base/reset';
+@use 'base/fonts';
+@use 'layout/typography';
+@use 'layout/common';
+
+@use '@/features/canvas/ui/Canvas';
+@use '@/widgets/Header/Header';

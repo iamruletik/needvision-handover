@@ -1,6 +1,123 @@
 /* Custom styles on top of Webflow. Ported from the legacy custom.css, plus new module styles. */
 
 
+/* Eye Transition — SVG mask blink between pages. EyeTransition.js injects the overlay
+   and drives state classes; durations/easings from the After Effects source (eye.json, 60fps) */
+:root {
+    --transition-close-duration: 750ms;
+    --transition-open-duration: 416.667ms;
+    --transition-gap: 50ms;
+
+    --transition-close-ease: cubic-bezier(0.655, 0, 0.111, 1);
+    --transition-open-ease: cubic-bezier(0.626, 0, 0.35, 1);
+
+    --transition-close-aperture-ease: cubic-bezier(0.333, 0, 0.108, 1);
+    --transition-close-cover-ease: var(--transition-close-ease);
+    --transition-open-aperture-ease: var(--transition-open-ease);
+    --transition-open-cover-ease: cubic-bezier(0.618, 0, 0.35, 1);
+
+    --eye-cover-open-scale: 2.55;
+    --eye-cover-closed-scale: 1;
+    --eye-aperture-open-scale-y: 1;
+    --eye-aperture-closed-scale-y: 0;
+    --eye-center-x: 683px;
+    --eye-center-y: 367.56px;
+    --eye-y-compensation: 16.44px;
+}
+
+.eye-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    width: 100%;
+    height: 100%;
+    contain: layout paint;
+    pointer-events: none;
+    visibility: hidden;
+}
+.eye-transition.is-closing,
+.eye-transition.is-covered,
+.eye-transition.is-opening {
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.eye-transition__svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.eye-cover-scale,
+.eye-aperture-scale {
+    transform-box: view-box;
+    transform-origin: var(--eye-center-x) var(--eye-center-y);
+}
+.eye-cover-scale {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+}
+.eye-aperture-scale {
+    transform: scaleY(var(--eye-aperture-open-scale-y));
+}
+
+.eye-transition.is-closing .eye-cover-scale,
+.eye-transition.is-closing .eye-aperture-scale,
+.eye-transition.is-opening .eye-cover-scale,
+.eye-transition.is-opening .eye-aperture-scale {
+    will-change: transform;
+}
+
+.eye-transition.is-closing .eye-cover-scale {
+    animation: eye-cover-close var(--transition-close-duration) var(--transition-close-cover-ease) both;
+}
+.eye-transition.is-closing .eye-aperture-scale {
+    animation: eye-aperture-close var(--transition-close-duration) var(--transition-close-aperture-ease) both;
+}
+
+.eye-transition.is-covered .eye-cover-scale {
+    transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+}
+.eye-transition.is-covered .eye-aperture-scale {
+    transform: scaleY(var(--eye-aperture-closed-scale-y));
+}
+.eye-transition.is-covered .eye-path {
+    visibility: hidden;
+}
+
+.eye-transition.is-opening .eye-cover-scale {
+    animation: eye-cover-open var(--transition-open-duration) var(--transition-open-cover-ease) both;
+}
+.eye-transition.is-opening .eye-aperture-scale {
+    animation: eye-aperture-open var(--transition-open-duration) var(--transition-open-aperture-ease) both;
+}
+
+@keyframes eye-cover-close {
+    from { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale)); }
+    to { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale)); }
+}
+@keyframes eye-aperture-close {
+    from { transform: scaleY(var(--eye-aperture-open-scale-y)); }
+    to { transform: scaleY(var(--eye-aperture-closed-scale-y)); }
+}
+@keyframes eye-cover-open {
+    from { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale)); }
+    to { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale)); }
+}
+@keyframes eye-aperture-open {
+    from { transform: scaleY(var(--eye-aperture-closed-scale-y)); }
+    to { transform: scaleY(var(--eye-aperture-open-scale-y)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .eye-transition.is-closing .eye-cover-scale,
+    .eye-transition.is-closing .eye-aperture-scale,
+    .eye-transition.is-opening .eye-cover-scale,
+    .eye-transition.is-opening .eye-aperture-scale {
+        animation-duration: 1ms;
+    }
+}
+
+
 /* Scroll Reveal — [data-smooth="true"] starts hidden (no flash before JS), ScrollReveal.js flips the class */
 [data-smooth='true'] {
     opacity: 0;

@@ -1,0 +1,17 @@
+@use '@/app/css/base/variables' as *;
+@use '@/app/css/utils/mixins' as *;
+
+.header {
+    position: fixed;
+    z-index: 5;
+    width: 100%;
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+}
+
+.header__wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
