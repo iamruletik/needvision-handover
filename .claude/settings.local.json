@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL https://cdn.prod.website-files.com/6a21bfb49168ff7f1c3e9612/css/need-vision-test.webflow.shared.dfec4b44a.css)",
+      "Bash(awk '/\\\\.preloader \\\\{/,/\\\\}/')",
+      "Bash(awk '/\\\\.preloader_icon \\\\{/,/\\\\}/')"
+    ]
+  }
+}

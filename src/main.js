@@ -91,9 +91,12 @@ barba.init({
     transitions: [{
         name: 'eye-blink',
 
-        async leave() {
+        async leave({ current }) {
             await eyeTransition.close()
             destroyPageModules()
+            //Barba keeps the old container in the DOM until the transition ends
+            //(stacked above the new one) — remove it now, while the screen is black
+            current.container.remove()
         },
 
         async enter({ next }) {

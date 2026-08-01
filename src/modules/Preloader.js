@@ -34,6 +34,11 @@ export class Preloader extends Module {
         this.sceneReady = false
         this.forceReady = false
 
+        //Webflow keeps the preloader display:none in the designer. The head-code
+        //snippet shows it before first paint; this is the fallback if that's missing.
+        this.preloader.style.display = 'flex'
+        this.preloader.style.opacity = '1'
+
         this.icons.forEach((icon, index) => {
             icon.style.opacity = index === 0 ? '1' : '0'
             icon.style.willChange = 'opacity'
