@@ -8,8 +8,12 @@ import { Module } from '../core/Module'
 //The scene dispatches 'experience-ready' on document when the world is live —
 //the preloader waits for it on first load.
 
-const SCENE_SCRIPT_PATH = '/assets/app.js'
-const SCENE_STYLE_PATH = '/assets/app.css'
+//__SITE_BASE__ — build-time constant (vite.config.js): localhost in dev, the GitHub
+//Pages URL in prod. NOT import.meta.url — the prod bundle is an IIFE, where
+//import.meta doesn't exist at all, so that would throw at runtime.
+/* global __SITE_BASE__ */
+const SCENE_SCRIPT_URL = new URL('/assets/app.js', __SITE_BASE__).href
+const SCENE_STYLE_URL = new URL('/assets/app.css', __SITE_BASE__).href
 
 let isLoading = false
 
@@ -28,14 +32,13 @@ export class SceneLoader extends Module {
         if (isLoading) return
         isLoading = true
 
-        //Bundle and styles live on our origin — resolve against this module's own URL,
-        //correct in dev (localhost) and production (GitHub Pages) alike
+        //Bundle and styles live on our own origin, never the Webflow page's
         let styleLink = document.createElement('link')
         styleLink.rel = 'stylesheet'
-        styleLink.href = new URL(SCENE_STYLE_PATH, import.meta.url).href
+        styleLink.href = SCENE_STYLE_URL
         document.head.appendChild(styleLink)
 
-        import(/* @vite-ignore */ new URL(SCENE_SCRIPT_PATH, import.meta.url).href)
+        import(/* @vite-ignore */ SCENE_SCRIPT_URL)
             .catch((error) => {
                 console.warn('SceneLoader: scene bundle failed to load', error)
             })
