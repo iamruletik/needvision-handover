@@ -12,8 +12,12 @@ import { Module } from '../core/Module'
 //Pages URL in prod. NOT import.meta.url — the prod bundle is an IIFE, where
 //import.meta doesn't exist at all, so that would throw at runtime.
 /* global __SITE_BASE__ */
-const SCENE_SCRIPT_URL = new URL('/assets/app.js', __SITE_BASE__).href
-const SCENE_STYLE_URL = new URL('/assets/app.css', __SITE_BASE__).href
+//No leading slash: '/assets/…' would be treated as an absolute path and throw the
+//base's own path away, resolving to iamruletik.github.io/assets/… (404).
+//Relative keeps the /needvision-handover/ deploy sub-path. __SITE_BASE__ always
+//ends in a slash, which relative resolution requires.
+const SCENE_SCRIPT_URL = new URL('assets/app.js', __SITE_BASE__).href
+const SCENE_STYLE_URL = new URL('assets/app.css', __SITE_BASE__).href
 
 let isLoading = false
 
