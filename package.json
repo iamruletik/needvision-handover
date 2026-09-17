@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "vite --mode tunnel",
     "snapshot": "node scripts/snapshot.js",
     "scene:build": "node scripts/build-scene.js",
     "scene:build:prod": "node scripts/build-scene.js --prod",

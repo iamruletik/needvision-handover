@@ -345,3 +345,84 @@
     -webkit-clip-path: inset(100% 0 0 0);
     will-change: clip-path;
 }
+
+
+/* ===========================================================
+   Fluid root scale
+   Lives here, not in Webflow page head code: Barba swaps only
+   the container and never touches <head>, so a page-level rule
+   would be missing after transitioning into these pages from
+   anywhere else — every rem would silently fall back to 16px.
+
+   1rem = 1.1vw, matching the site's existing body font size.
+   Below 991 it rebases on the 402px mobile artboard
+   (3.98vw = 16px there), clamped so it neither collapses on a
+   small phone nor balloons on a tablet. Retune mobile type by
+   changing the middle value; the bounds are 15px / 22px.
+
+   Note: custom code does not run on the Designer canvas, so
+   there 1rem falls back to 16px — which is what 1.1vw equals
+   at 1440px anyway, so the canvas stays accurate.
+   =========================================================== */
+html { font-size: 1.1vw; }
+
+@media screen and (max-width: 991px) {
+    html { font-size: clamp(0.9375rem, 3.98vw, 1.375rem); }
+}
+
+
+/* Shared Text — optical flow the Webflow Designer cannot express */
+.text_title,
+.policy_title { text-wrap: balance; }
+.text_body,
+.casepage_list-title,
+.casepage_bullet-item { text-wrap: pretty; }
+
+
+/* Case Study Page */
+
+.casepage_main { overflow-x: clip; }
+@supports not (overflow: clip) { .casepage_main { overflow-x: hidden; } }
+
+.casepage_bullet-item::marker { color: var(--main-colours--ink); font-size: .7em; }
+
+/* Draggable gallery */
+.casepage_gallery-track { -webkit-user-select: none; touch-action: pan-y; }
+.casepage_gallery-track:active { cursor: grabbing; }
+.casepage_gallery-thumb,
+.casepage_gallery-feature { -webkit-user-drag: none; }
+
+/* Charts — inline SVG rendered as real Webflow elements.
+   Two figures per card (.is-desktop / .is-mobile) share these class
+   names inside, so one animation targets both breakpoints. */
+.casepage_chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.casepage_chart-grid { stroke: var(--main-colours--ink); stroke-opacity: .12; stroke-width: 1; }
+.casepage_chart-line { fill: none; stroke: var(--main-colours--orange); stroke-width: 1.5;
+                       stroke-linecap: round; stroke-linejoin: round; }
+.casepage_chart-dot { fill: var(--main-colours--orange); }
+.casepage_chart-dot.is-base { fill: var(--main-colours--ink); fill-opacity: .25; }
+.casepage_chart-axis { fill: var(--main-colours--ink); fill-opacity: .55;
+                       font-family: var(--fonts--mono); font-size: 11px; font-weight: 500;
+                       letter-spacing: -.05em; }
+
+/* Hairlines and axis type stay crisp as the SVG scales down */
+.casepage_chart-grid,
+.casepage_chart-line { vector-effect: non-scaling-stroke; }
+
+/* Animation hook — set --line-length from GSAP, then tween stroke-dashoffset */
+.casepage_chart-line { stroke-dasharray: var(--line-length, none); stroke-dashoffset: 0; }
+
+
+/* Privacy Policy Page */
+
+/* Sticky sidebar needs no clipping ancestor — guard against one */
+.policy_main { overflow: visible; }
+
+
+@media (prefers-reduced-motion: reduce) {
+    .casepage_main *, .casepage_main *::before, .casepage_main *::after,
+    .policy_main *, .policy_main *::before, .policy_main *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+    }
+}

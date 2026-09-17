@@ -1,9 +1,20 @@
 name: Deploy to GitHub Pages
 
-# Manual trigger only for now — flip to push-based once the site is stable
-# enough that every push to master should go live automatically.
+# Deploys on push to master. paths filter keeps docs/notes edits from redeploying.
+# workflow_dispatch kept for manual re-runs.
 on:
   workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'scene/**'
+      - 'scripts/**'
+      - 'public/**'
+      - 'vite.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/**'
 
 permissions:
   contents: read

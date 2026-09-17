@@ -21,6 +21,7 @@ import { PartnerSpotlight } from './modules/PartnerSpotlight'
 import { LogoGridSwap } from './modules/LogoGridSwap'
 import { CasesPage } from './modules/CasesPage'
 import { CasesSlider } from './modules/CasesSlider'
+import { CaseGallerySlider } from './modules/CaseGallerySlider'
 import { TeamSlider } from './modules/TeamSlider'
 import { SceneLoader } from './modules/SceneLoader'
 
@@ -50,6 +51,7 @@ const PAGE_MODULE_CLASSES = [
     LogoGridSwap,
     CasesPage,
     CasesSlider,
+    CaseGallerySlider,
     TeamSlider,
     SceneLoader,
 ]
