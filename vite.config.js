@@ -6,6 +6,12 @@ import cssInjectedByJsPlugin from "vite-plugin-css-injected-by-js";
 // URLs resolve against OUR origin even though the script runs on Webflow's page.
 export const PRODUCTION_SITE_BASE = "https://iamruletik.github.io/needvision-handover/";
 
+// Runtime assets (gltf/, textures/, videos/ — ~25MB) are served from Google Cloud
+// Storage, not Pages: Pages has a soft 100GB/month bandwidth limit and no cache
+// control. Keeps the deployed dist/ small — only the JS bundles ship to Pages.
+// The bucket has no /static folder; staticUrl() strips that prefix.
+export const PRODUCTION_STATIC_BASE = "https://storage.googleapis.com/radiance/needvision";
+
 export default defineConfig(({ command }) => ({
   base: command === "build" ? PRODUCTION_SITE_BASE : "/",
   server: {

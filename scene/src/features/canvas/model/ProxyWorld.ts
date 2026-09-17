@@ -1,5 +1,4 @@
 import Stats, { type StatsData } from 'stats-gl';
-import { staticUrl } from '@/shared/lib/static-url';
 import canvasWorkerUrl from './canvas.worker.ts?worker&url';
 import type { World } from './World';
 import type { ExperienceRevealParams, HeaderLogoRect, IWorld } from './types';
@@ -57,10 +56,12 @@ export class ProxyWorld implements IWorld {
             // imports the absolute worker URL is allowed (our host serves CORS headers).
             // canvasWorkerUrl is root-absolute ('/assets/canvas.worker.js'), which would
             // resolve against the origin and drop the /needvision-handover/ deploy
-            // sub-path. staticUrl() prefixes the deployed base like every other runtime
-            // asset; the new URL() wrapper keeps standalone dev working, where the base
-            // is empty and the path stays relative to this module.
-            const absoluteWorkerUrl = new URL(staticUrl(canvasWorkerUrl), import.meta.url).href;
+            // sub-path. The worker is always emitted next to app.js, so resolve it as a
+            // sibling of this module — correct on any host and any sub-path, and
+            // deliberately NOT staticUrl(): that points at the asset CDN, while the
+            // worker ships with the bundle.
+            const workerFileName = canvasWorkerUrl.split('/').pop() as string;
+            const absoluteWorkerUrl = new URL(workerFileName, import.meta.url).href;
             const workerBlob = new Blob([`import ${JSON.stringify(absoluteWorkerUrl)};`], {
                 type: 'application/javascript',
             });

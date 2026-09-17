@@ -14,7 +14,7 @@
 import { execSync } from 'node:child_process'
 import { cpSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { PRODUCTION_SITE_BASE } from '../vite.config.js'
+import { PRODUCTION_STATIC_BASE } from '../vite.config.js'
 
 const SCENE_DIR = 'scene'
 const BUILD_DIR = join(SCENE_DIR, 'build')
@@ -32,8 +32,9 @@ const STATIC_COPY_LIST = [
 ]
 
 const isProd = process.argv.includes('--prod')
-//trailing slash trimmed — the scene appends its own leading slash per asset path
-const staticBase = isProd ? PRODUCTION_SITE_BASE.replace(/\/$/, '') : undefined
+//Prod serves runtime assets from Google Cloud Storage; dev serves them from our
+//own Vite server. No trailing slash — the scene appends its own leading slash.
+const staticBase = isProd ? PRODUCTION_STATIC_BASE.replace(/\/$/, '') : undefined
 
 console.log(`Building scene${isProd ? ' (production)' : ''}...`)
 execSync('pnpm build', {
@@ -47,12 +48,20 @@ console.log('Copying bundles to public/assets...')
 rmSync('public/assets', { recursive: true, force: true })
 cpSync(join(BUILD_DIR, 'assets'), 'public/assets', { recursive: true })
 
-console.log('Copying static assets to public/static...')
+//Prod loads these ~25MB from Google Cloud Storage, so they must NOT land in public/
+//(Vite copies public/ into dist/, which is what gets uploaded to Pages).
+//Dev serves them from our own Vite server, so there they are still copied.
 rmSync('public/static', { recursive: true, force: true })
-for (let path of STATIC_COPY_LIST) {
-    let target = join('public', path)
-    mkdirSync(join(target, '..'), { recursive: true })
-    cpSync(join(BUILD_DIR, path), target)
-}
 
-console.log('Scene ready: public/assets + public/static')
+if (isProd) {
+    console.log(`Skipping static assets — production loads them from ${staticBase}`)
+    console.log('Scene ready: public/assets')
+} else {
+    console.log('Copying static assets to public/static...')
+    for (let path of STATIC_COPY_LIST) {
+        let target = join('public', path)
+        mkdirSync(join(target, '..'), { recursive: true })
+        cpSync(join(BUILD_DIR, path), target)
+    }
+    console.log('Scene ready: public/assets + public/static')
+}
