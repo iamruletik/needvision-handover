@@ -6,8 +6,9 @@ import { SmoothScroll } from './core/SmoothScroll'
 import { EyeTransition } from './core/EyeTransition'
 import { Preloader } from './modules/Preloader'
 import { Clock } from './modules/Clock'
-import { NavScroll } from './modules/NavScroll'
-import { NavCtaInvert } from './modules/NavCtaInvert'
+//Navbar disabled — uncomment the imports and list entries below to bring it back
+// import { NavScroll } from './modules/NavScroll'
+// import { NavCtaInvert } from './modules/NavCtaInvert'
 import { AmountCounter } from './modules/AmountCounter'
 import { Marquee } from './modules/Marquee'
 import { ScrollReveal } from './modules/ScrollReveal'
@@ -16,7 +17,6 @@ import { HeroImageReveal } from './modules/HeroImageReveal'
 import { HeroExit } from './modules/HeroExit'
 import { BentoParallax } from './modules/BentoParallax'
 import { Stages } from './modules/Stages'
-import { FooterReveal } from './modules/FooterReveal'
 import { PartnerSpotlight } from './modules/PartnerSpotlight'
 import { LogoGridSwap } from './modules/LogoGridSwap'
 import { CasesPage } from './modules/CasesPage'
@@ -24,6 +24,17 @@ import { CasesSlider } from './modules/CasesSlider'
 import { CaseGallerySlider } from './modules/CaseGallerySlider'
 import { TeamSlider } from './modules/TeamSlider'
 import { SceneLoader } from './modules/SceneLoader'
+import { ScrollArrow } from './modules/ScrollArrow'
+import { HeroScrollReveal } from './modules/HeroScrollReveal'
+import { FooterIntro } from './modules/FooterIntro'
+import { FooterLight } from './modules/FooterLight'
+import { ArrowDownloadIcon } from './modules/ArrowDownloadIcon'
+import { HomePage } from './pages/home'
+import { CasesPageScript } from './pages/cases'
+import { CaseStudyPage } from './pages/case-study'
+import { CompanyPage } from './pages/company'
+import { ContactsPage } from './pages/contacts'
+import { PrivacyPage } from './pages/privacy'
 
 //Persistent Layer — survives every page swap
 
@@ -36,8 +47,8 @@ const preloader = new Preloader(smoothScroll).mount() //first load only, Barba u
 
 const PAGE_MODULE_CLASSES = [
     Clock,
-    NavScroll,
-    NavCtaInvert,
+    // NavScroll,
+    // NavCtaInvert,
     AmountCounter,
     Marquee,
     ScrollReveal,
@@ -46,7 +57,6 @@ const PAGE_MODULE_CLASSES = [
     HeroExit,
     BentoParallax,
     Stages,
-    FooterReveal,
     PartnerSpotlight,
     LogoGridSwap,
     CasesPage,
@@ -54,17 +64,51 @@ const PAGE_MODULE_CLASSES = [
     CaseGallerySlider,
     TeamSlider,
     SceneLoader,
+    ScrollArrow,
+    HeroScrollReveal,
+    FooterIntro, //after Clock — Clock writes the time text it masks
+    FooterLight,
+    ArrowDownloadIcon,
 ]
 
-let activeModules = []
+//Page Scripts — one per Barba namespace (data-barba-namespace on the container in Webflow)
 
-function mountPageModules() {
+const PAGE_CLASSES_BY_NAMESPACE = {
+    'home': HomePage,
+    'cases': CasesPageScript,
+    'case-study': CaseStudyPage,
+    'company': CompanyPage,
+    'contacts': ContactsPage,
+    'privacy': PrivacyPage,
+}
+
+let activeModules = []
+let activePage = null
+
+function currentNamespace() {
+    return document.querySelector('[data-barba="container"]')?.dataset.barbaNamespace
+}
+
+function mountPageModules(namespace = currentNamespace()) {
     activeModules = PAGE_MODULE_CLASSES.map((ModuleClass) => new ModuleClass(smoothScroll).mount())
+
+    let PageClass = PAGE_CLASSES_BY_NAMESPACE[namespace]
+    if (!PageClass) console.warn(`[main] no page script for namespace "${namespace}"`)
+    activePage = PageClass ? new PageClass(smoothScroll).mount() : null
 }
 
 function destroyPageModules() {
     activeModules.forEach((module) => module.destroy())
     activeModules = []
+
+    activePage?.destroy()
+    activePage = null
+}
+
+//Screen just became visible (preloader faded / eye opened) — modules with intro animations play them
+function revealPageModules() {
+    activeModules.forEach((module) => module.reveal?.())
+    activePage?.reveal?.()
 }
 
 //Webflow re-init — Webflow's own JS (forms etc.) binds once per full load;
@@ -107,11 +151,12 @@ barba.init({
             //Land at the top while the screen is still black
             smoothScroll.lenis.scrollTo(0, { immediate: true, force: true })
 
-            mountPageModules()
+            mountPageModules(next.namespace)
             ScrollTrigger.refresh()
 
             await eyeTransition.wait()
             await eyeTransition.open()
+            revealPageModules()
         },
     }],
 })
@@ -119,7 +164,8 @@ barba.init({
 //First Load
 
 mountPageModules()
+preloader.revealed.then(revealPageModules)
 
 //Debug handle — poke around from the browser console via window.app
-window.app = { smoothScroll, eyeTransition, preloader, get modules() { return activeModules } }
+window.app = { smoothScroll, eyeTransition, preloader, get modules() { return activeModules }, get page() { return activePage } }
 console.log('[main] loaded — barba active, modules:', activeModules.map((module) => module.constructor.name).join(', '))

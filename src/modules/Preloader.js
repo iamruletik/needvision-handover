@@ -19,14 +19,16 @@ export class Preloader extends Module {
     constructor(smoothScroll) {
         super()
         this.smoothScroll = smoothScroll
+        //Resolves when the page becomes visible — fade start, or immediately if there's no preloader
+        this.revealed = new Promise((resolve) => { this.resolveRevealed = resolve })
     }
 
     setup() {
         this.preloader = document.querySelector('.preloader')
-        if (!this.preloader) return
+        if (!this.preloader) return this.resolveRevealed()
 
         this.icons = [...this.preloader.querySelectorAll('.preloader_icon')]
-        if (this.icons.length === 0) return
+        if (this.icons.length === 0) return this.resolveRevealed()
 
         this.currentIcon = 0
         this.lastFrameAt = 0
@@ -104,6 +106,7 @@ export class Preloader extends Module {
         this.unlockScroll()
 
         this.later(() => {
+            this.resolveRevealed()
             this.animate(gsap.to(this.preloader, {
                 opacity: 0,
                 duration: FADE_DURATION,
@@ -114,5 +117,11 @@ export class Preloader extends Module {
                 },
             }))
         }, PAUSE_ON_LAST_MS)
+    }
+
+    //Failed mount must not leave the page waiting forever
+    destroy() {
+        super.destroy()
+        this.resolveRevealed?.()
     }
 }

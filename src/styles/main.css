@@ -35,6 +35,7 @@
     pointer-events: none;
     visibility: hidden;
 }
+
 .eye-transition.is-closing,
 .eye-transition.is-covered,
 .eye-transition.is-opening {
@@ -53,9 +54,11 @@
     transform-box: view-box;
     transform-origin: var(--eye-center-x) var(--eye-center-y);
 }
+
 .eye-cover-scale {
     transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
 }
+
 .eye-aperture-scale {
     transform: scaleY(var(--eye-aperture-open-scale-y));
 }
@@ -70,6 +73,7 @@
 .eye-transition.is-closing .eye-cover-scale {
     animation: eye-cover-close var(--transition-close-duration) var(--transition-close-cover-ease) both;
 }
+
 .eye-transition.is-closing .eye-aperture-scale {
     animation: eye-aperture-close var(--transition-close-duration) var(--transition-close-aperture-ease) both;
 }
@@ -77,9 +81,11 @@
 .eye-transition.is-covered .eye-cover-scale {
     transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
 }
+
 .eye-transition.is-covered .eye-aperture-scale {
     transform: scaleY(var(--eye-aperture-closed-scale-y));
 }
+
 .eye-transition.is-covered .eye-path {
     visibility: hidden;
 }
@@ -87,28 +93,53 @@
 .eye-transition.is-opening .eye-cover-scale {
     animation: eye-cover-open var(--transition-open-duration) var(--transition-open-cover-ease) both;
 }
+
 .eye-transition.is-opening .eye-aperture-scale {
     animation: eye-aperture-open var(--transition-open-duration) var(--transition-open-aperture-ease) both;
 }
 
 @keyframes eye-cover-close {
-    from { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale)); }
-    to { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale)); }
+    from {
+        transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+    }
+
+    to {
+        transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+    }
 }
+
 @keyframes eye-aperture-close {
-    from { transform: scaleY(var(--eye-aperture-open-scale-y)); }
-    to { transform: scaleY(var(--eye-aperture-closed-scale-y)); }
+    from {
+        transform: scaleY(var(--eye-aperture-open-scale-y));
+    }
+
+    to {
+        transform: scaleY(var(--eye-aperture-closed-scale-y));
+    }
 }
+
 @keyframes eye-cover-open {
-    from { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale)); }
-    to { transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale)); }
+    from {
+        transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-closed-scale));
+    }
+
+    to {
+        transform: translateY(var(--eye-y-compensation)) scale(var(--eye-cover-open-scale));
+    }
 }
+
 @keyframes eye-aperture-open {
-    from { transform: scaleY(var(--eye-aperture-closed-scale-y)); }
-    to { transform: scaleY(var(--eye-aperture-open-scale-y)); }
+    from {
+        transform: scaleY(var(--eye-aperture-closed-scale-y));
+    }
+
+    to {
+        transform: scaleY(var(--eye-aperture-open-scale-y));
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .eye-transition.is-closing .eye-cover-scale,
     .eye-transition.is-closing .eye-aperture-scale,
     .eye-transition.is-opening .eye-cover-scale,
@@ -127,6 +158,7 @@
         transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform, opacity;
 }
+
 [data-smooth='true'].is-revealed {
     opacity: 1;
     transform: translateY(0);
@@ -141,9 +173,11 @@
     will-change: transform;
     animation: marquee-scroll var(--marquee-duration, 30s) linear infinite;
 }
+
 [data-marquee-ready][data-marquee-reverse] {
     animation-direction: reverse;
 }
+
 @keyframes marquee-scroll {
     to {
         transform: translateX(-50%);
@@ -151,27 +185,302 @@
 }
 
 
+/* Scroll Arrow — ScrollArrow.js wraps the svg + a clone (one height above) in a track,
+   CSS drops the track one height and holds; at loop restart the clone sits exactly
+   where the original was, so the reset is invisible */
+.arrow-scroll-icon-mask {
+    --arrow-scroll-duration: 1.8s;
+    --arrow-scroll-ease: cubic-bezier(0.65, 0, 0.35, 1);
+    --arrow-scroll-gap: 50%;
+    /* empty space between arrow and clone, % of arrow height */
+    overflow: hidden;
+}
+
+.arrow-scroll-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+    animation: arrow-scroll-drop var(--arrow-scroll-duration) infinite;
+}
+
+.arrow-scroll-track>svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.arrow-scroll-track>.arrow-scroll-clone {
+    position: absolute;
+    top: calc(-100% - var(--arrow-scroll-gap));
+    left: 0;
+}
+
+/* Drop over the first 55%, rest is the pause. top % and translate % both resolve
+   against the track height, so the drop distance always matches the clone offset */
+@keyframes arrow-scroll-drop {
+    0% {
+        transform: translateY(0);
+        animation-timing-function: var(--arrow-scroll-ease);
+    }
+
+    55%,
+    100% {
+        transform: translateY(calc(100% + var(--arrow-scroll-gap)));
+    }
+}
+
+
+/* Arrow Download Icon — ArrowDownloadIcon.js wraps the svg: mask > track > [svg, clone].
+   Clone sits one height + gap above; hover drops the track by the same amount, so the
+   clone lands exactly where the arrow was. % in top and translate both resolve against
+   the track height. */
+.arrow-download-icon {
+    --arrow-download-duration: 0.5s;
+    --arrow-download-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+    --arrow-download-gap: 50%;
+    --arrow-download-scale: 0.85;
+    transition: transform var(--arrow-download-duration) var(--arrow-download-ease);
+    /* Own GPU layer — scaled as a bitmap instead of re-rasterized every frame,
+       which snapped edges to whole pixels and made the size shimmer */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+.arrow-download-icon__mask {
+    display: inline-flex;
+    overflow: hidden;
+}
+.arrow-download-icon__track {
+    position: relative;
+    display: inline-flex;
+    transition: transform var(--arrow-download-duration) var(--arrow-download-ease);
+}
+.arrow-download-icon__clone {
+    position: absolute;
+    top: calc(-100% - var(--arrow-download-gap));
+    left: 0;
+}
+/* Hovering the whole presentation link plays the icon too, and whitens its label */
+.contacts-download-presentation .small-label-text {
+    transition: color var(--arrow-download-duration, 0.5s) cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+    .arrow-download-icon:hover,
+    .contacts-download-presentation:hover .arrow-download-icon {
+        transform: scale(var(--arrow-download-scale));
+    }
+    .arrow-download-icon:hover .arrow-download-icon__track,
+    .contacts-download-presentation:hover .arrow-download-icon__track {
+        transform: translateY(calc(100% + var(--arrow-download-gap)));
+    }
+    .contacts-download-presentation:hover .small-label-text {
+        color: var(--main-colours--white);
+    }
+}
+
+
+/* Social Links — hover fills orange, text goes black */
+.social-link {
+    transition:
+        color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+@media (hover: hover) {
+    .social-link:hover {
+        color: var(--main-colours--black);
+        background-color: var(--main-colours--orange);
+        border-color: var(--main-colours--orange);
+    }
+}
+
+
+/* Header Color per Page — reads the namespace off the Barba container, no JS.
+   On <html> so the header outside the container inherits it; follows every Barba swap.
+   html:has() (0,1,1) outranks Webflow's :root (0,1,0). No match = Webflow default.
+   :has() — Safari 15.4+, older browsers keep the default */
+html:has([data-barba-namespace="home"]) { --main-colours--header-color: var(--main-colours--white); }
+html:has([data-barba-namespace="privacy"]) { --main-colours--header-color: var(--main-colours--ink); }
+html:has([data-barba-namespace="contacts"]) { --main-colours--header-color: var(--main-colours--orange); }
+html:has([data-barba-namespace="cases"]) { --main-colours--header-color: var(--main-colours--white); }
+html:has([data-barba-namespace="company"]) { --main-colours--header-color: var(--main-colours--ink); }
+html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: var(--main-colours--white); }
+
+
+/* Contacts Headline — ContactsHeadline.js holds the accent at the headline's gray
+   until the line reveal finishes, then drops the class: accent words fade to white
+   one after another (index from JS). Transition sits on the words, not the span —
+   the span snaps, each word eases toward it on its own delay */
+.contacts_page-content-headline .is-accent-word {
+    --accent-word-stagger: 0.08s;
+    transition: color 1.2s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+    transition-delay: calc(var(--accent-word-index, 0) * var(--accent-word-stagger));
+}
+/* Single-word accent: SplitText may nest the span inside the word — span takes the word's timing */
+.contacts_page-content-headline .is-accent-word .white-accent {
+    transition: inherit;
+}
+.contacts_page-content-headline.is-accent-dimmed .white-accent {
+    color: inherit;
+}
+
+/* Contact Form — textarea resizes vertically only */
+.contacts-form-input-field.area {
+    resize: vertical;
+}
+
+/* Contact Form — fields keep only the bottom border */
+.contacts-form-input-field {
+    border-left: none;
+    border-right: none;
+    border-top: none;
+}
+
+
+/*Company CSS*/
+
+/* Steps Year Counter — StepsYearCounter.js builds prefix + one masked digit slot.
+   Prefix and digits share one line box height so the slot mask lines up with the text */
+.steps-year__drum {
+    --steps-year-digit-height: 1.1em;
+    display: inline-flex;
+    align-items: flex-start;
+    line-height: var(--steps-year-digit-height);
+    font-variant-numeric: tabular-nums; /* equal digit widths — slot doesn't jitter */
+}
+.steps-year__slot {
+    display: inline-block;
+    height: var(--steps-year-digit-height);
+    overflow: hidden;
+}
+.steps-year__strip {
+    display: block;
+    will-change: transform;
+}
+.steps-year__digit {
+    display: block;
+    height: var(--steps-year-digit-height);
+}
+
+/* ImageParallax.js scales the inner image to 1.2 — the container must clip the overflow */
+.companypage_image-container {
+    overflow: hidden;
+}
+
+.card-grid-item:nth-child(1) {
+    margin-top: 14rem;
+    margin-left: 1rem;
+}
+
+.card-grid-item:nth-child(4) {
+    margin-top: -10rem;
+    place-self: center;
+}
+
+.card-grid-item:nth-child(3) {
+    place-self: end;
+    margin-top: 10rem;
+}
+
+
+
+
+
+/* Floating Button — sign svg slides to -58% (one pattern repeat), snaps back, loops. Pure CSS. */
+.floating-button-wrapper .floating-button-sign {
+    --floating-sign-duration: 10s;
+    --floating-sign-shift: -59%;
+    will-change: transform;
+    animation: floating-sign-slide var(--floating-sign-duration) linear infinite;
+}
+
+@keyframes floating-sign-slide {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(var(--floating-sign-shift));
+    }
+}
+
+
+/* Company Tabs — hover fill. (hover: hover) so taps on touch don't leave it stuck on */
+.companypage_tabs-item {
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+@media (hover: hover) {
+    .companypage_tabs-item:hover {
+        color: #ffffff;
+        background-color: #8F8E84;
+    }
+}
+
+/* Tab images — stacked in one grid cell (height still comes from the images),
+   CompanyTabs.js slides them through the clipped container */
+.companypage_tabs-visual {
+    display: grid;
+    overflow: hidden;
+}
+
+.companypage_tabs-visual>[data-tab-target] {
+    grid-area: 1 / 1;
+    will-change: transform;
+}
+
+
+/* Footer Marquee — two identical tracks side by side, each slides one own width left;
+   at the loop restart track 2 sits where track 1 started, so the reset is invisible.
+   Needs no gap between the tracks (a gap would show as a jump). */
+.footer_form-marquee-btn .footer-marquee_track {
+    --footer-marquee-duration: 12s;
+    flex-shrink: 0;
+    will-change: transform;
+    animation: footer-marquee var(--footer-marquee-duration) linear infinite;
+}
+/* Hover swaps the colors — (hover: hover) so taps on touch don't leave it stuck on */
+.footer_form-marquee-btn {
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+@media (hover: hover) {
+    .footer_form-marquee-btn:hover {
+        color: var(--main-colours--black);
+        background-color: var(--main-colours--orange);
+    }
+}
+@keyframes footer-marquee {
+    to { transform: translateX(-59.6%); }
+}
+
+
 /* Amount Counter — AmountCounter.js builds digit slots over 0-9 strips and rolls them */
 .counter {
     display: inline-flex;
     overflow: hidden;
-    font-variant-numeric: tabular-nums; /* equal digit widths — no jitter while rolling */
+    font-variant-numeric: tabular-nums;
+    /* equal digit widths — no jitter while rolling */
 }
+
 .counter__slot {
     display: inline-block;
     height: 1em;
     line-height: 1;
     overflow: hidden;
 }
+
 .counter__strip {
     display: block;
     will-change: transform;
 }
+
 .counter__strip span {
     display: block;
     height: 1em;
     line-height: 1;
 }
+
 .counter__separator {
     display: inline-block;
     line-height: 1;
@@ -186,7 +495,11 @@
         transform: none;
         transition: none;
     }
-    [data-marquee-ready] {
+
+    [data-marquee-ready],
+    .arrow-scroll-track,
+    .floating-button-wrapper .floating-button-sign,
+    .footer_form-marquee-btn .footer-marquee_track {
         animation: none;
     }
 }
@@ -198,17 +511,17 @@
     -webkit-backdrop-filter: blur(8px);
 
     -webkit-mask-image: linear-gradient(to bottom,
-        black 0%,
-        black 60%,
-        rgba(0, 0, 0, 0.6) 80%,
-        rgba(0, 0, 0, 0.2) 92%,
-        transparent 100%);
+            black 0%,
+            black 60%,
+            rgba(0, 0, 0, 0.6) 80%,
+            rgba(0, 0, 0, 0.2) 92%,
+            transparent 100%);
     mask-image: linear-gradient(to bottom,
-        black 0%,
-        black 60%,
-        rgba(0, 0, 0, 0.6) 80%,
-        rgba(0, 0, 0, 0.2) 92%,
-        transparent 100%);
+            black 0%,
+            black 60%,
+            rgba(0, 0, 0, 0.6) 80%,
+            rgba(0, 0, 0, 0.2) 92%,
+            transparent 100%);
 }
 
 
@@ -221,9 +534,9 @@
     --spotlight-size: 60vw;
 
     background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
-        rgba(0, 0, 0, 0) 0%,
-        rgba(0, 0, 0, 0.85) 50%,
-        rgba(0, 0, 0, 1) 88%);
+            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0.85) 50%,
+            rgba(0, 0, 0, 1) 88%);
 }
 
 
@@ -244,6 +557,7 @@
     color: inherit;
     cursor: pointer;
 }
+
 .menu-icon__bar {
     position: absolute;
     left: 0;
@@ -254,12 +568,19 @@
     transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
 }
-.menu-icon__bar--top { top: 0.125vw; }
-.menu-icon__bar--bot { bottom: 0.125vw; }
+
+.menu-icon__bar--top {
+    top: 0.125vw;
+}
+
+.menu-icon__bar--bot {
+    bottom: 0.125vw;
+}
 
 .menu-icon.is-open .menu-icon__bar--top {
     transform: translateY(0.165vw) rotate(30deg);
 }
+
 .menu-icon.is-open .menu-icon__bar--bot {
     transform: translateY(-0.165vw) rotate(-30deg);
 }
@@ -286,6 +607,7 @@
     overflow: hidden;
     transition: color 0.3s ease;
 }
+
 .case-row::before {
     content: "";
     position: absolute;
@@ -296,7 +618,8 @@
     z-index: 0;
     pointer-events: none;
 }
-.case-row > * {
+
+.case-row>* {
     position: relative;
     z-index: 1;
 }
@@ -304,6 +627,7 @@
 .case-row.is-active {
     color: #000000;
 }
+
 .case-row.is-active::before {
     transform: scaleY(1);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -312,6 +636,7 @@
 .case-row_logo {
     transition: filter 0.3s ease;
 }
+
 .case-row.is-active .case-row_logo {
     filter: brightness(0);
 }
@@ -323,6 +648,7 @@
     overflow: hidden;
     transition: width 0.3s ease;
 }
+
 .case-row.is-active .case-row_arrow {
     width: 1vw;
 }
@@ -332,6 +658,7 @@
     position: relative;
     overflow: hidden;
 }
+
 .cases-sidebar_preview {
     position: absolute;
     top: 0;
@@ -364,64 +691,133 @@
    there 1rem falls back to 16px — which is what 1.1vw equals
    at 1440px anyway, so the canvas stays accurate.
    =========================================================== */
-html { font-size: 1.1vw; }
+html {
+    font-size: 1.1111111111111112vw;
+}
 
 @media screen and (max-width: 991px) {
-    html { font-size: clamp(0.9375rem, 3.98vw, 1.375rem); }
+    html {
+        font-size: clamp(0.9375rem, 3.98vw, 1.375rem);
+    }
 }
 
 
 /* Shared Text — optical flow the Webflow Designer cannot express */
 .text_title,
-.policy_title { text-wrap: balance; }
+.policy_title {
+    text-wrap: balance;
+}
+
 .text_body,
 .casepage_list-title,
-.casepage_bullet-item { text-wrap: pretty; }
+.casepage_bullet-item {
+    text-wrap: pretty;
+}
 
 
 /* Case Study Page */
 
-.casepage_main { overflow-x: clip; }
-@supports not (overflow: clip) { .casepage_main { overflow-x: hidden; } }
+.casepage_main {
+    overflow-x: clip;
+}
 
-.casepage_bullet-item::marker { color: var(--main-colours--ink); font-size: .7em; }
+@supports not (overflow: clip) {
+    .casepage_main {
+        overflow-x: hidden;
+    }
+}
+
+.casepage_bullet-item::marker {
+    color: var(--main-colours--ink);
+    font-size: .7em;
+}
 
 /* Draggable gallery */
-.casepage_gallery-track { -webkit-user-select: none; touch-action: pan-y; }
-.casepage_gallery-track:active { cursor: grabbing; }
+.casepage_gallery-track {
+    -webkit-user-select: none;
+    touch-action: pan-y;
+}
+
+.casepage_gallery-track:active {
+    cursor: grabbing;
+}
+
 .casepage_gallery-thumb,
-.casepage_gallery-feature { -webkit-user-drag: none; }
+.casepage_gallery-feature {
+    -webkit-user-drag: none;
+}
 
 /* Charts — inline SVG rendered as real Webflow elements.
    Two figures per card (.is-desktop / .is-mobile) share these class
    names inside, so one animation targets both breakpoints. */
-.casepage_chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
-.casepage_chart-grid { stroke: var(--main-colours--ink); stroke-opacity: .12; stroke-width: 1; }
-.casepage_chart-line { fill: none; stroke: var(--main-colours--orange); stroke-width: 1.5;
-                       stroke-linecap: round; stroke-linejoin: round; }
-.casepage_chart-dot { fill: var(--main-colours--orange); }
-.casepage_chart-dot.is-base { fill: var(--main-colours--ink); fill-opacity: .25; }
-.casepage_chart-axis { fill: var(--main-colours--ink); fill-opacity: .55;
-                       font-family: var(--fonts--mono); font-size: 11px; font-weight: 500;
-                       letter-spacing: -.05em; }
+.casepage_chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.casepage_chart-grid {
+    stroke: var(--main-colours--ink);
+    stroke-opacity: .12;
+    stroke-width: 1;
+}
+
+.casepage_chart-line {
+    fill: none;
+    stroke: var(--main-colours--orange);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.casepage_chart-dot {
+    fill: var(--main-colours--orange);
+}
+
+.casepage_chart-dot.is-base {
+    fill: var(--main-colours--ink);
+    fill-opacity: .25;
+}
+
+.casepage_chart-axis {
+    fill: var(--main-colours--ink);
+    fill-opacity: .55;
+    font-family: var(--fonts--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -.05em;
+}
 
 /* Hairlines and axis type stay crisp as the SVG scales down */
 .casepage_chart-grid,
-.casepage_chart-line { vector-effect: non-scaling-stroke; }
+.casepage_chart-line {
+    vector-effect: non-scaling-stroke;
+}
 
 /* Animation hook — set --line-length from GSAP, then tween stroke-dashoffset */
-.casepage_chart-line { stroke-dasharray: var(--line-length, none); stroke-dashoffset: 0; }
+.casepage_chart-line {
+    stroke-dasharray: var(--line-length, none);
+    stroke-dashoffset: 0;
+}
 
 
 /* Privacy Policy Page */
 
 /* Sticky sidebar needs no clipping ancestor — guard against one */
-.policy_main { overflow: visible; }
+.policy_main {
+    overflow: visible;
+}
 
 
 @media (prefers-reduced-motion: reduce) {
-    .casepage_main *, .casepage_main *::before, .casepage_main *::after,
-    .policy_main *, .policy_main *::before, .policy_main *::after {
+
+    .casepage_main *,
+    .casepage_main *::before,
+    .casepage_main *::after,
+    .policy_main *,
+    .policy_main *::before,
+    .policy_main *::after {
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
     }
