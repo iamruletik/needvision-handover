@@ -29,7 +29,7 @@ const STEP_YEARS = ['2020', '2024', '2026']
 const STEP_TRIGGER_START = 'top center'
 const STEP_TRIGGER_END = 'bottom center'
 
-const ROLL_DURATION = 1
+const ROLL_DURATION = 1.4
 const ROLL_EASE = 'power3.inOut'
 
 //Notch Scrub

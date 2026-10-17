@@ -4,24 +4,31 @@ import { Module } from '../../core/Module'
 //Company page header color follows whichever section sits under the header.
 //Each zone is active while its section spans HEADER_LINE (a line near the top of the
 //screen, roughly where the header sits); entering a zone from either direction sets
-//--main-colours--header-color inline on <html>, overriding the per-page :has() rule
-//in main.css. destroy() removes it, so other pages fall back to their CSS color.
+//--main-colours--header-color and its opposite --main-colours--small-header-color inline on
+//<html>, overriding the per-page :has() rule in main.css. destroy() removes both, so other
+//pages fall back to their CSS colors.
 //
 //Footer is position:fixed and gets uncovered from below — it can't be measured, so its
 //zone starts when the last content section (cards wrapper) ends at HEADER_LINE.
 
 const HEADER_COLOR_PROPERTY = '--main-colours--header-color'
+const SMALL_HEADER_COLOR_PROPERTY = '--main-colours--small-header-color'
 const HEADER_LINE = '40px' //from the top of the viewport
 
+//Each color comes with its opposite for small-header-color (pill text, menu)
+const BLACK = { color: 'var(--main-colours--black)', inverted: 'var(--main-colours--white)' }
+const WHITE = { color: 'var(--main-colours--white)', inverted: 'var(--main-colours--black)' }
+const ORANGE = { color: 'var(--main-colours--orange)', inverted: 'var(--main-colours--black)' }
+
 const ZONES = [
-    { section: '.companypage_hero', color: 'var(--main-colours--black)' },
-    { section: '.companypage_image', color: 'var(--main-colours--white)' },
-    { section: '.companypage_tabs-section', color: 'var(--main-colours--black)' },
-    { section: '.companypage_steps-container', color: 'var(--main-colours--white)' },
-    { section: '.companypage_cards-wrapper', color: 'var(--main-colours--black)' },
+    { section: '.companypage_hero', color: BLACK },
+    { section: '.companypage_image', color: WHITE },
+    { section: '.companypage_tabs-section', color: BLACK },
+    { section: '.companypage_steps-container', color: WHITE },
+    { section: '.companypage_cards-wrapper', color: BLACK },
 ]
 
-const FOOTER_COLOR = 'var(--main-colours--orange)'
+const FOOTER_COLOR = ORANGE
 const LAST_CONTENT_SELECTOR = '.companypage_cards-wrapper'
 
 export class HeaderColorZones extends Module {
@@ -64,14 +71,16 @@ export class HeaderColorZones extends Module {
         }))
     }
 
-    setColor(color) {
+    setColor({ color, inverted }) {
         this.root.style.setProperty(HEADER_COLOR_PROPERTY, color)
+        this.root.style.setProperty(SMALL_HEADER_COLOR_PROPERTY, inverted)
     }
 
-    //Cleanup — hand the color back to the per-page CSS rule
+    //Cleanup — hand both colors back to the per-page CSS rule
 
     destroy() {
         super.destroy()
         this.root?.style.removeProperty(HEADER_COLOR_PROPERTY)
+        this.root?.style.removeProperty(SMALL_HEADER_COLOR_PROPERTY)
     }
 }

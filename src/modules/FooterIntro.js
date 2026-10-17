@@ -14,7 +14,7 @@ import { Module } from '../core/Module'
 //within FIXED_REVEAL_FRACTION of a footer height from the very bottom.
 //The form marquee is pure CSS (main.css "Footer Marquee").
 
-const FOOTER_SELECTOR = '.footer'
+const FOOTER_SELECTOR = '.footer-component-element'
 
 const CTA_LINE_SELECTOR = '.huge-footer_line-mask > .huge-footer_text'
 const MISSION_LINE_SELECTOR = '.footer_p-mask > .footer_p-text'

@@ -280,6 +280,55 @@
 }
 
 
+/* Header Cases Arrow — IconRoll.js wraps the svg: mask > track > [svg, clone]. Clone waits
+   one size + gap down-left; hovering the link moves the track the same amount up-right, so
+   the arrow leaves through the top-right corner and the clone lands where it was.
+   % in top/left and in translate both resolve against the track (= svg) size. */
+#header-cases-link {
+    --header-arrow-duration: 0.5s;
+    --header-arrow-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+    --header-arrow-gap: 25%;
+}
+.header-arrow-roll__mask {
+    display: inline-flex;
+    overflow: hidden;
+}
+.header-arrow-roll__track {
+    position: relative;
+    display: inline-flex;
+    transition: transform var(--header-arrow-duration) var(--header-arrow-ease);
+}
+.header-arrow-roll__clone {
+    position: absolute;
+    top: calc(100% + var(--header-arrow-gap));
+    left: calc(-100% - var(--header-arrow-gap));
+}
+@media (hover: hover) {
+    #header-cases-link:hover .header-arrow-roll__track {
+        transform: translate(calc(100% + var(--header-arrow-gap)), calc(-100% - var(--header-arrow-gap)));
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .header-arrow-roll__track {
+        transition: none;
+    }
+}
+
+
+/* Call to Action — hover fills orange, text goes ink */
+.call-to-action {
+    transition:
+        color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+@media (hover: hover) {
+    .call-to-action:hover {
+        color: var(--main-colours--ink);
+        background-color: var(--main-colours--orange);
+    }
+}
+
+
 /* Social Links — hover fills orange, text goes black */
 .social-link {
     transition:
@@ -296,16 +345,183 @@
 }
 
 
+/* Header Compact — HeaderCompact.js moves the big logo out of the column above this
+   container; this padding replaces the height it reserved, so the descriptor keeps its offset */
+.header-content-logo-container-feature.is-header-compact {
+    padding-top: 2rem;
+}
+/* .is-inverted color fades both ways, in step with the pill (0.9s power3.inOut) — only while
+   html.is-header-transitioning (HeaderCompact.js, for the length of a compact / spread), so
+   other color changes (company color zones) snap like the rest of the header.
+   On the children too, in case Webflow colors them directly; svg icons use currentColor */
+.is-header-transitioning #header-cases-link,
+.is-header-transitioning #header-cases-link *,
+.is-header-transitioning #header-menu-link,
+.is-header-transitioning #header-menu-link * {
+    transition: color 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+
+/* Profit Counter — ProfitCounter.js rebuilds the label as letters + digit drums.
+   Letters and slots share one line height so the drum masks line up with the text;
+   tabular digits so the drums don't change width as they roll */
+.profit-counter {
+    --profit-digit-height: 1.2em;
+    display: inline-flex;
+    align-items: flex-start;
+    line-height: var(--profit-digit-height);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.profit-counter__char {
+    display: inline-block;
+    white-space: pre; /* keeps spaces as real width */
+}
+.profit-counter__slot {
+    display: inline-block;
+    height: var(--profit-digit-height);
+    overflow: hidden;
+}
+.profit-counter__strip {
+    display: block;
+    will-change: transform;
+}
+.profit-counter__strip > span {
+    display: block;
+    height: var(--profit-digit-height);
+}
+
+
+/* Divider lines are drawn with background-color — fade it with the links' color, same
+   compact / spread window. More specific than the color-only rule above so it isn't overridden */
+.is-header-transitioning #header-cases-link .menu-line-divider,
+.is-header-transitioning #header-menu-link .menu-line-divider {
+    transition:
+        color 0.9s cubic-bezier(0.65, 0, 0.35, 1),
+        background-color 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Menu Link Lines — two divider lines spaced by padding (Webflow: 2px / 3px);
+   hovering the menu link pulls them together. Padding always eases; color only joins in
+   during a compact / spread. Both ID-level so the color-only rule above can't drop the padding */
+#header-menu-link .menu-lines-layout {
+    transition: padding 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+.is-header-transitioning #header-menu-link .menu-lines-layout {
+    transition:
+        color 0.9s cubic-bezier(0.65, 0, 0.35, 1),
+        padding 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+@media (hover: hover) {
+    #header-menu-link:hover .menu-lines-layout {
+        padding-top: 4px;
+        padding-bottom: 5px;
+    }
+}
+
+
+/* Progressive Blur — real radius ramp, sharp at the bottom to 40px at the top.
+   ProgressiveBlur.js injects 6 .progressive-blur-layer divs; each blurs twice as hard as
+   the previous one and is masked to its own band (bands overlap, so the steps blend).
+   Container must already be positioned in Webflow (absolute / fixed / relative) —
+   the layers fill it with inset: 0. */
+.progressive-blur-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.progressive-blur-layer:nth-child(1) {
+    -webkit-backdrop-filter: blur(1.25px);
+    backdrop-filter: blur(1.25px);
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, black 16.7%, black 33.3%, transparent 50%);
+    mask-image: linear-gradient(to top, transparent 0%, black 16.7%, black 33.3%, transparent 50%);
+}
+.progressive-blur-layer:nth-child(2) {
+    -webkit-backdrop-filter: blur(2.5px);
+    backdrop-filter: blur(2.5px);
+    -webkit-mask-image: linear-gradient(to top, transparent 16.7%, black 33.3%, black 50%, transparent 66.7%);
+    mask-image: linear-gradient(to top, transparent 16.7%, black 33.3%, black 50%, transparent 66.7%);
+}
+.progressive-blur-layer:nth-child(3) {
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    -webkit-mask-image: linear-gradient(to top, transparent 33.3%, black 50%, black 66.7%, transparent 83.3%);
+    mask-image: linear-gradient(to top, transparent 33.3%, black 50%, black 66.7%, transparent 83.3%);
+}
+.progressive-blur-layer:nth-child(4) {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    -webkit-mask-image: linear-gradient(to top, transparent 50%, black 66.7%, black 83.3%, transparent 100%);
+    mask-image: linear-gradient(to top, transparent 50%, black 66.7%, black 83.3%, transparent 100%);
+}
+.progressive-blur-layer:nth-child(5) {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    -webkit-mask-image: linear-gradient(to top, transparent 66.7%, black 83.3%, black 100%);
+    mask-image: linear-gradient(to top, transparent 66.7%, black 83.3%, black 100%);
+}
+.progressive-blur-layer:nth-child(6) {
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
+    -webkit-mask-image: linear-gradient(to top, transparent 83.3%, black 100%);
+    mask-image: linear-gradient(to top, transparent 83.3%, black 100%);
+}
+
+
+/* Header Menu Hit Area — the wrappers are always laid out across the top of the screen, so
+   they never take the pointer; only the menu box itself does. While closed it's
+   visibility: hidden and clipped shut (MenuReveal.js), so it doesn't catch anything either */
+.header-menu-container,
+.header-menu-content {
+    pointer-events: none;
+}
+.header-menu-content-container {
+    pointer-events: auto;
+}
+
+
+/* Menu Large Links — MenuLinks.js. Current page's link is inert; others get a hover fill
+   (absolute, full size, wiped in with clip-path) sitting behind the text */
+.menu-large-link {
+    position: relative;
+}
+.menu-large-link.is-current {
+    opacity: 0.2;
+    pointer-events: none;
+}
+.menu-large-link__fill {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    will-change: clip-path;
+}
+.menu-large-link > :not(.menu-large-link__fill) {
+    position: relative;
+    z-index: 1;
+}
+
+
 /* Header Color per Page — reads the namespace off the Barba container, no JS.
+   header-color = the header's own color; small-header-color = its opposite (text on the pill
+   and in the menu, which are filled with header-color).
    On <html> so the header outside the container inherits it; follows every Barba swap.
    html:has() (0,1,1) outranks Webflow's :root (0,1,0). No match = Webflow default.
-   :has() — Safari 15.4+, older browsers keep the default */
-html:has([data-barba-namespace="home"]) { --main-colours--header-color: var(--main-colours--white); }
-html:has([data-barba-namespace="privacy"]) { --main-colours--header-color: var(--main-colours--ink); }
-html:has([data-barba-namespace="contacts"]) { --main-colours--header-color: var(--main-colours--orange); }
-html:has([data-barba-namespace="cases"]) { --main-colours--header-color: var(--main-colours--white); }
-html:has([data-barba-namespace="company"]) { --main-colours--header-color: var(--main-colours--ink); }
-html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: var(--main-colours--white); }
+   :has() — Safari 15.4+, older browsers keep the default.
+   Known: below 991px Webflow re-declares these variables on body, which shadows <html> — mobile TBD */
+html:has([data-barba-namespace="home"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
+html:has([data-barba-namespace="privacy"]) { --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white); }
+html:has([data-barba-namespace="contacts"]) { --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black); }
+html:has([data-barba-namespace="cases"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
+html:has([data-barba-namespace="company"]) { --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white); }
+html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
+
+/* Header Pill Fill — the compact pill is filled with header-color; HeaderCompact.js fades it
+   by tweening --placer-fill 0 → 1, so the color itself always follows the variable (page
+   swaps, company color zones), even mid-fade. color-mix — Safari 16.2+ */
+.header-content-links-placer {
+    background-color: color-mix(in srgb, var(--main-colours--header-color) calc(var(--placer-fill, 1) * 100%), transparent);
+}
 
 
 /* Contacts Headline — ContactsHeadline.js holds the accent at the headline's gray
@@ -390,6 +606,15 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
 /* Floating Button — sign svg slides to -58% (one pattern repeat), snaps back, loops. Pure CSS. */
 .floating-button-wrapper .floating-button-sign {
     --floating-sign-duration: 10s;
+    --floating-sign-shift: -59%;
+    will-change: transform;
+    animation: floating-sign-slide var(--floating-sign-duration) linear infinite;
+}
+
+/* Call to Action — same seamless slide (pattern repeats at -59%), reuses the keyframes;
+   the shift is read per element from --floating-sign-shift */
+.call-to-action-svg {
+    --floating-sign-duration: 16s;
     --floating-sign-shift: -59%;
     will-change: transform;
     animation: floating-sign-slide var(--floating-sign-duration) linear infinite;
@@ -499,6 +724,7 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
     [data-marquee-ready],
     .arrow-scroll-track,
     .floating-button-wrapper .floating-button-sign,
+    .call-to-action-svg,
     .footer_form-marquee-btn .footer-marquee_track {
         animation: none;
     }

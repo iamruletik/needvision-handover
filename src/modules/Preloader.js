@@ -9,6 +9,9 @@ import { Module } from '../core/Module'
 //a <canvas> inside it or the scene's 'experience-ready' event. MAX_WAIT_MS is the
 //hard ceiling — the preloader never hangs forever waiting for a scene that died.
 
+const PRELOADER_SELECTOR = '.preloader-component-element'
+const ICON_SELECTOR = '.preloader_icon'
+
 const FRAME_MS = 300
 const PAUSE_ON_LAST_MS = 600
 const FADE_DURATION = 1.0
@@ -24,10 +27,10 @@ export class Preloader extends Module {
     }
 
     setup() {
-        this.preloader = document.querySelector('.preloader')
+        this.preloader = document.querySelector(PRELOADER_SELECTOR)
         if (!this.preloader) return this.resolveRevealed()
 
-        this.icons = [...this.preloader.querySelectorAll('.preloader_icon')]
+        this.icons = [...this.preloader.querySelectorAll(ICON_SELECTOR)]
         if (this.icons.length === 0) return this.resolveRevealed()
 
         this.currentIcon = 0

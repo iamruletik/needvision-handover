@@ -11,7 +11,7 @@ import { Module } from '../core/Module'
 //Cost: moving a gradient repaints the layer each frame (no transform possible with
 //inset: 0 — moving the element would expose its edges).
 
-const FOOTER_SELECTOR = '.footer'
+const FOOTER_SELECTOR = '.footer-component-element'
 const CONTAINER_SELECTOR = '.footer-interactive-image'
 const LIGHT_SELECTOR = '.footer-interactive-light'
 const POINTER_MEDIA = '(hover: hover) and (pointer: fine)'

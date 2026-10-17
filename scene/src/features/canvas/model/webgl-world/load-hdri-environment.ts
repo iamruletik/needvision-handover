@@ -15,9 +15,9 @@ const ldrEquirectBitmapLoader = new ImageBitmapLoader();
 
 ldrEquirectBitmapLoader.setOptions({ imageOrientation: 'flipY', premultiplyAlpha: 'none' });
 
-export const HDRI_URL = staticUrl('/static/textures/hdri/sunset_in_the_chalk_quarry_1k.hdr');
+export const HDRI_URL = staticUrl('/static/textures/hdri/sunset_in_the_chalk_quarry_256.exr');
 
-export const WATER_HDRI_URL = staticUrl('/static/textures/hdri/ferndale_studio_08_1k.hdr');
+export const WATER_HDRI_URL = staticUrl('/static/textures/hdri/ferndale_studio_08_256.exr');
 
 export const HDRI_ENV_FILE_EXTENSIONS = [
     'jpg',

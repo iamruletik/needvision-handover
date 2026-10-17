@@ -5,6 +5,10 @@ import { ScrollTrigger } from './core/gsap'
 import { SmoothScroll } from './core/SmoothScroll'
 import { EyeTransition } from './core/EyeTransition'
 import { Preloader } from './modules/Preloader'
+import { HeaderCompact } from './modules/HeaderCompact'
+import { MenuLinks } from './modules/MenuLinks'
+import { MenuMoney } from './modules/MenuMoney'
+import { IconRoll } from './modules/IconRoll'
 import { Clock } from './modules/Clock'
 //Navbar disabled — uncomment the imports and list entries below to bring it back
 // import { NavScroll } from './modules/NavScroll'
@@ -29,6 +33,7 @@ import { HeroScrollReveal } from './modules/HeroScrollReveal'
 import { FooterIntro } from './modules/FooterIntro'
 import { FooterLight } from './modules/FooterLight'
 import { ArrowDownloadIcon } from './modules/ArrowDownloadIcon'
+import { ProgressiveBlur } from './modules/ProgressiveBlur'
 import { HomePage } from './pages/home'
 import { CasesPageScript } from './pages/cases'
 import { CaseStudyPage } from './pages/case-study'
@@ -41,6 +46,10 @@ import { PrivacyPage } from './pages/privacy'
 const smoothScroll = new SmoothScroll()
 const eyeTransition = new EyeTransition()
 const preloader = new Preloader(smoothScroll).mount() //first load only, Barba uses the eye
+const headerCompact = new HeaderCompact().mount() //header lives outside the Barba container
+const menuLinks = new MenuLinks().mount() //menu lives in the header — told the page on every swap
+const menuMoney = new MenuMoney().mount() //live counters + speedometer in the menu
+const casesLinkArrow = new IconRoll('#header-cases-link .arrow-line', 'header-arrow-roll').mount() //hover drum on the header arrow
 
 //Page Modules — destroyed and rebuilt on every Barba transition.
 //Each receives smoothScroll (most ignore it); each skips silently when its elements are missing.
@@ -69,6 +78,7 @@ const PAGE_MODULE_CLASSES = [
     FooterIntro, //after Clock — Clock writes the time text it masks
     FooterLight,
     ArrowDownloadIcon,
+    ProgressiveBlur,
 ]
 
 //Page Scripts — one per Barba namespace (data-barba-namespace on the container in Webflow)
@@ -90,6 +100,8 @@ function currentNamespace() {
 }
 
 function mountPageModules(namespace = currentNamespace()) {
+    menuLinks.setCurrentNamespace(namespace)
+    headerCompact.setNamespace(namespace) //cases / contacts: header pinned compact
     activeModules = PAGE_MODULE_CLASSES.map((ModuleClass) => new ModuleClass(smoothScroll).mount())
 
     let PageClass = PAGE_CLASSES_BY_NAMESPACE[namespace]
@@ -138,7 +150,9 @@ barba.init({
         name: 'eye-blink',
 
         async leave({ current }) {
+            await headerCompact.closeMenuBeforeLeave() //menu up (e.g. a menu link) — it closes first, then the eye
             await eyeTransition.close()
+            headerCompact.snapMenuClosed() //safety net — new page always opens with the menu shut
             destroyPageModules()
             //Barba keeps the old container in the DOM until the transition ends
             //(stacked above the new one) — remove it now, while the screen is black
@@ -167,5 +181,5 @@ mountPageModules()
 preloader.revealed.then(revealPageModules)
 
 //Debug handle — poke around from the browser console via window.app
-window.app = { smoothScroll, eyeTransition, preloader, get modules() { return activeModules }, get page() { return activePage } }
+window.app = { smoothScroll, eyeTransition, preloader, headerCompact, menuLinks, menuMoney, casesLinkArrow, get modules() { return activeModules }, get page() { return activePage } }
 console.log('[main] loaded — barba active, modules:', activeModules.map((module) => module.constructor.name).join(', '))

@@ -10,7 +10,7 @@ const START_AMOUNT = 400800400
 const INCREMENT = 15
 const MIN_INTERVAL_MS = 15000
 const MAX_INTERVAL_MS = 20000
-const ROLL_DURATION = 1.4
+const ROLL_DURATION = 2
 const ROLL_EASE = 'power4.out'
 const ROLL_STAGGER = 0.06
 
