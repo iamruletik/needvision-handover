@@ -17,10 +17,18 @@ import { loadScrollTransitionNoiseTexture } from '../load-scroll-transition-text
 import { setupSceneLights } from '../setup-scene-lights';
 import { applyParticleRoadGuiFromSearchParams } from '../world-tweak-url';
 
+// Load milestones in the console — ms since this bootstrap started (worker or main thread)
+function logLoadStage(bootStart: number, stage: string) {
+    // eslint-disable-next-line no-console
+    console.info(`[scene] ${stage} — ${Math.round(performance.now() - bootStart)}ms`);
+}
+
 export async function runWorldBootstrap(world: World, options: CanvasData): Promise<void> {
     if (world.disposed) {
         return;
     }
+
+    const bootStart = performance.now();
 
     world.scrollTransitionUnderwaterCanvas = new OffscreenCanvas(1, 1);
     const uctx = world.scrollTransitionUnderwaterCanvas.getContext('2d', {
@@ -74,6 +82,8 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
     if (world.disposed) {
         return;
     }
+
+    logLoadStage(bootStart, 'assets loaded (city model, lighting, noise texture)');
 
     if (cityLoad) {
         world.syncCityMaterials = cityLoad.syncCityMaterials;
@@ -181,7 +191,7 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
         afSrc = options.afSrc.h265;
     }
 
-    world.afPlayer = new ActiveFrameCtor(afSrc, {
+    const afPlayer = new ActiveFrameCtor(afSrc, {
         hardwareAcceleration,
         closeFrameAfterProcess: true,
         process: (frame: VideoFrame) => {
@@ -189,22 +199,35 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
         },
     });
 
-    await world.afPlayer.loading;
+    world.afPlayer = afPlayer;
 
-    if (world.disposed) {
-        world.afPlayer?.destroy();
-        world.afPlayer = undefined;
+    // Underwater video (2–9MB) loads in the background — the scene reports ready (and starts its
+    // reveal) without it.
+    // It's only shown in the scroll transition at the end of the section; until it arrives,
+    // ScrollTransitionModule skips it (no manifest yet).
+    afPlayer.loading
+        .then(() => {
+            // Disposed (or replaced) while downloading — World.dispose() already destroyed it
+            if (world.disposed || world.afPlayer !== afPlayer) {
+                return;
+            }
 
-        return;
-    }
+            const manifest = afPlayer.manifest;
 
-    const manifest = world.afPlayer.manifest;
+            if (manifest && world.scrollTransitionUnderwaterImageSize) {
+                world.scrollTransitionUnderwaterImageSize.value.set(manifest.width, manifest.height);
+            }
 
-    if (manifest && world.scrollTransitionUnderwaterImageSize) {
-        world.scrollTransitionUnderwaterImageSize.value.set(manifest.width, manifest.height);
-    }
+            // Same priming as before: first frame now, then the transition picks the frame for
+            // the current scroll on its next update
+            afPlayer.setFrame(0);
+            world.scrollTransition.resetAfFrameIndex();
 
-    world.afPlayer.setFrame(0);
+            logLoadStage(bootStart, `underwater video loaded (${afSrc.split('/').pop()})`);
+        })
+        .catch((error: unknown) => {
+            console.warn('[scene] underwater video failed to load', error);
+        });
 
     world.spotlight.primeVolumetricGuiUniforms(
         world.volumetricGui,
@@ -271,6 +294,8 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
     if (world.scrollProgress >= 1 - SCROLL_WEBGL_COMPLETE_EPS && !world.isAnimationLoopRunning) {
         world.render();
     }
+
+    logLoadStage(bootStart, 'scene ready — first frame, reveal animation starts');
     options.onInitialized?.();
 }
 

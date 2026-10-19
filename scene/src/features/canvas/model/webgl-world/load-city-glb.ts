@@ -23,7 +23,6 @@ import {
     DoubleSide,
     FrontSide,
     Group,
-    ImageBitmapLoader,
     type Material,
     Mesh,
     MeshStandardNodeMaterial,
@@ -506,10 +505,6 @@ export async function loadCityGlb(
         hoverRadialExtentCurr,
         hoverColoringActiveUniform,
     };
-
-    const cityAoBitmapLoader = new ImageBitmapLoader();
-
-    cityAoBitmapLoader.setOptions({ premultiplyAlpha: 'none' });
 
     const { baseColorUniform } = applyCityGltfMaterials(root, renderer, cityGui, hoverUniforms, hoverEmissiveUniform);
 
