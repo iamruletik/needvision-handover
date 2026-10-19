@@ -1,4 +1,5 @@
-import Stats, { type StatsData } from 'stats-gl';
+// DEBUG TOOLS DISABLED — stats-gl worker overlay commented out below, keeps it out of app.js
+// import Stats, { type StatsData } from 'stats-gl';
 import canvasWorkerUrl from './canvas.worker.ts?worker&url';
 import type { World } from './World';
 import type { ExperienceRevealParams, HeaderLogoRect, IWorld } from './types';
@@ -21,8 +22,8 @@ export class ProxyWorld implements IWorld {
     private world?: World;
     private canvasEl: HTMLCanvasElement;
     private readonly initParams: ProxyWorldInitParams;
-    private workerStats?: Stats;
-    private workerStatsRaf = 0;
+    // private workerStats?: Stats; // DEBUG TOOLS DISABLED
+    // private workerStatsRaf = 0;
     private logoRectBuffer?: HeaderLogoRect | null;
 
     constructor(
@@ -86,9 +87,10 @@ export class ProxyWorld implements IWorld {
 
             this.worker.addEventListener('message', this.#onWorkerMessage);
 
-            if (process.env.NODE_ENV === 'development') {
-                this.#startWorkerStatsOverlay();
-            }
+            // DEBUG TOOLS DISABLED
+            // if (process.env.NODE_ENV === 'development') {
+            //     this.#startWorkerStatsOverlay();
+            // }
         } else {
             initFallback();
         }
@@ -127,44 +129,46 @@ export class ProxyWorld implements IWorld {
                 break;
             }
 
-            case 'stats': {
-                this.workerStats?.setData(ev.data.payload as StatsData);
-                break;
-            }
+            // DEBUG TOOLS DISABLED
+            // case 'stats': {
+            //     this.workerStats?.setData(ev.data.payload as StatsData);
+            //     break;
+            // }
 
             default:
                 break;
         }
     };
 
-    #startWorkerStatsOverlay() {
-        this.workerStats = new Stats({
-            trackGPU: true,
-            trackCPT: true,
-        });
-        this.workerStats.domElement.classList.add('stats-gl');
-        document.body.appendChild(this.workerStats.dom);
-
-        const tick = () => {
-            if (this.workerStats) {
-                this.workerStats.begin();
-                this.workerStats.update();
-            }
-
-            this.workerStatsRaf = requestAnimationFrame(tick);
-        };
-
-        this.workerStatsRaf = requestAnimationFrame(tick);
-    }
-
-    #stopWorkerStatsOverlay() {
-        if (this.workerStatsRaf !== 0) {
-            cancelAnimationFrame(this.workerStatsRaf);
-            this.workerStatsRaf = 0;
-        }
-        this.workerStats?.dispose();
-        this.workerStats = undefined;
-    }
+    // DEBUG TOOLS DISABLED — stats-gl overlay for the worker
+    // #startWorkerStatsOverlay() {
+    //     this.workerStats = new Stats({
+    //         trackGPU: true,
+    //         trackCPT: true,
+    //     });
+    //     this.workerStats.domElement.classList.add('stats-gl');
+    //     document.body.appendChild(this.workerStats.dom);
+    //
+    //     const tick = () => {
+    //         if (this.workerStats) {
+    //             this.workerStats.begin();
+    //             this.workerStats.update();
+    //         }
+    //
+    //         this.workerStatsRaf = requestAnimationFrame(tick);
+    //     };
+    //
+    //     this.workerStatsRaf = requestAnimationFrame(tick);
+    // }
+    //
+    // #stopWorkerStatsOverlay() {
+    //     if (this.workerStatsRaf !== 0) {
+    //         cancelAnimationFrame(this.workerStatsRaf);
+    //         this.workerStatsRaf = 0;
+    //     }
+    //     this.workerStats?.dispose();
+    //     this.workerStats = undefined;
+    // }
 
     #flushLogoRectBuffer() {
         if (this.world === undefined) {
@@ -180,9 +184,10 @@ export class ProxyWorld implements IWorld {
     }
 
     #teardownWorkerOnly() {
-        if (process.env.NODE_ENV === 'development') {
-            this.#stopWorkerStatsOverlay();
-        }
+        // DEBUG TOOLS DISABLED
+        // if (process.env.NODE_ENV === 'development') {
+        //     this.#stopWorkerStatsOverlay();
+        // }
         const w = this.worker;
 
         if (!w) {

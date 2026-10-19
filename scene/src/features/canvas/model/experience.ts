@@ -25,7 +25,10 @@ class Experience {
         this.onPointerdown = this.onPointerdown.bind(this);
 
         this.canvasParent = canvas.parentElement;
-        const isDebug = new URLSearchParams(window.location.search).has('debug');
+        // DEBUG TOOLS DISABLED — ?debug only forced the main thread so the tweakpane panel could
+        // attach; with the panel commented out it would just give up the worker for nothing
+        // const isDebug = new URLSearchParams(window.location.search).has('debug');
+        const isDebug = false;
 
         this.world = new ProxyWorld(
             {

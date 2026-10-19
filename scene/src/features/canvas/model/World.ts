@@ -28,7 +28,7 @@ import {
     ScrollTransitionModule,
     SpotlightModule,
     WaterSurfaceModule,
-    WorldDebugModule,
+    // WorldDebugModule, // DEBUG TOOLS DISABLED — tweakpane panel
     type WorldFrameContext,
     WorldStatsModule,
     runWorldBootstrap,
@@ -135,7 +135,7 @@ export class World implements IWorld {
     readonly postFx = new PostProcessingModule(this);
     readonly runtimeStats = new WorldStatsModule();
     readonly environment = new EnvironmentModule(this);
-    readonly worldDebug = new WorldDebugModule(this);
+    // readonly worldDebug = new WorldDebugModule(this); // DEBUG TOOLS DISABLED
 
     private isRendering = false;
     private disposeDone: Promise<void> | null = null;
@@ -384,7 +384,7 @@ export class World implements IWorld {
             });
         }
 
-        this.worldDebug.dispose();
+        // this.worldDebug.dispose(); // DEBUG TOOLS DISABLED
 
         this.runtimeStats.disposeDom();
 

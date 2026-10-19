@@ -1,7 +1,8 @@
-import Stats, { StatsProfiler } from 'stats-gl';
+// DEBUG TOOLS DISABLED — see the commented block at the end of runWorldBootstrap
+// import Stats, { StatsProfiler } from 'stats-gl';
 import { uniform } from 'three/tsl';
 import { Layers, Mesh, Plane, SRGBColorSpace, Texture, Vector2, Vector3 } from 'three/webgpu';
-import { RendererStats } from '../../../lib/RendererStats';
+// import { RendererStats } from '../../../lib/RendererStats';
 import { Pointer } from '../../../utils/Pointer';
 import type { World } from '../../World';
 import { getActiveFrameConstructor } from '../../active-frame-types';
@@ -231,37 +232,39 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
 
     world.scrollTransition.resetAfFrameIndex();
 
-    if (process.env.NODE_ENV === 'development') {
-        const rs = world.runtimeStats;
-
-        if (options.isWorker) {
-            rs.statsProfiler = new StatsProfiler({
-                trackGPU: true,
-                trackCPT: true,
-            });
-
-            await rs.statsProfiler.init(world.renderer);
-
-            if (world.disposed) {
-                return;
-            }
-        } else {
-            rs.stats = new Stats({
-                trackGPU: true,
-                trackCPT: true,
-            });
-            rs.stats.domElement.classList.add('stats-gl');
-            rs.stats.init(world.renderer);
-            document.body.appendChild(rs.stats.dom);
-
-            rs.rendererStats = new RendererStats();
-            document.body.appendChild(rs.rendererStats.element);
-        }
-    }
-
-    if (!options.isWorker) {
-        world.worldDebug.setup();
-    }
+    // DEBUG TOOLS DISABLED — stats-gl overlay and tweakpane panel commented out so they stay
+    // out of the production bundle. Uncomment (with the imports above) to bring them back.
+    // if (process.env.NODE_ENV === 'development') {
+    //     const rs = world.runtimeStats;
+    //
+    //     if (options.isWorker) {
+    //         rs.statsProfiler = new StatsProfiler({
+    //             trackGPU: true,
+    //             trackCPT: true,
+    //         });
+    //
+    //         await rs.statsProfiler.init(world.renderer);
+    //
+    //         if (world.disposed) {
+    //             return;
+    //         }
+    //     } else {
+    //         rs.stats = new Stats({
+    //             trackGPU: true,
+    //             trackCPT: true,
+    //         });
+    //         rs.stats.domElement.classList.add('stats-gl');
+    //         rs.stats.init(world.renderer);
+    //         document.body.appendChild(rs.stats.dom);
+    //
+    //         rs.rendererStats = new RendererStats();
+    //         document.body.appendChild(rs.rendererStats.element);
+    //     }
+    // }
+    //
+    // if (!options.isWorker) {
+    //     world.worldDebug.setup();
+    // }
 
     world.syncAnimationLoopWithScrollProgress();
 

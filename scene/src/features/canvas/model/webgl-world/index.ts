@@ -10,5 +10,5 @@ export type { ParticleRoadEntry } from './particle-roads';
 export { ParticleRoadsModule } from './particle-roads';
 export { PostProcessingModule } from './post-processing';
 export { WorldStatsModule } from './stats';
-export { WorldDebugModule } from './debug';
+// export { WorldDebugModule } from './debug'; // DEBUG TOOLS DISABLED — keeps tweakpane out of the bundle
 export { EnvironmentModule } from './environment';
