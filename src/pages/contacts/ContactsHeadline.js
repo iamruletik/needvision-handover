@@ -1,5 +1,5 @@
 import { Module } from '../../core/Module'
-import { SplitBlurReveal } from '../company/SplitBlurReveal'
+import { SplitBlurReveal } from '../../modules/SplitBlurReveal'
 
 //Contacts headline, two parts:
 //  1. lines rise out of masks, container un-blurs (SplitBlurReveal)
@@ -25,8 +25,9 @@ export class ContactsHeadline extends Module {
         this.headlines.forEach((headline) => headline.classList.add(DIMMED_CLASS))
 
         this.lineReveal = new SplitBlurReveal(HEADLINE_SELECTOR, {
-            waitForScroll: false, //contacts never scrolls
-            splitOptions: { type: 'words, lines', wordsClass: WORD_CLASS },
+            trigger: null, //contacts never scrolls — plays on page reveal
+            split: 'words, lines',
+            splitOptions: { wordsClass: WORD_CLASS },
             onSplit: (headline, split) => this.indexAccentWords(split),
             onComplete: (headline) => headline.classList.remove(DIMMED_CLASS),
         }).mount()

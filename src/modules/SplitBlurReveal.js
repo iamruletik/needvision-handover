@@ -1,96 +1,242 @@
-import { gsap, ScrollTrigger, SplitText } from '../../core/gsap'
-import { Module } from '../../core/Module'
+import { gsap, ScrollTrigger, SplitText } from '../core/gsap'
+import { Module } from '../core/Module'
 import { styleLineMasks } from './lineMasks'
 
-//Reusable line reveal: SplitText cuts the text into masked lines, each line rises
-//out of its mask while the whole text element un-blurs — blur sits on the container,
-//one filter layer per block instead of one per line.
-//Usage: new SplitBlurReveal('.selector', { ...overrides }).mount()
+//The site's text reveal: SplitText cuts text into masked lines, each line slides out of its
+//mask while the text un-blurs. Defaults cover the common case; anything else goes in an
+//options object, ScrollTrigger-style.
 //
-//Plays when BOTH are true: page revealed (reveal() — preloader / eye done) and the element
-//crossed `start`. Hero text plays right after the reveal, text further down on scroll.
+//  new SplitBlurReveal('.heading').mount()                          — each element on scroll
+//  new SplitBlurReveal('.headline', { trigger: null }).mount()      — on page reveal, no scroll
+//  new SplitBlurReveal('.text', { trigger: '.section', start: 'top center' }).mount()
+//  let reveal = new SplitBlurReveal(element, { trigger: 'manual' }).mount()
+//  await reveal.playOut(); reveal.setText('New text'); reveal.playIn()
 //
-//Every element has its own trigger (ScrollTrigger.batch) — safe under sticky parents.
-//Elements crossing `start` within batchInterval of each other cascade in DOM order,
-//batchStagger apart; an element arriving alone plays without delay.
+//Targets: selector, element or array of elements.
 //
-//trigger — optional selector. All elements then play off that ONE element's position
-//instead, cascading in DOM order batchStagger apart (text that sits low/sticky in its section).
+//trigger:
+//  'self'      — every element has its own ScrollTrigger (safe under sticky parents). Elements
+//                crossing `start` within batchInterval cascade in DOM order, `cascade` apart.
+//  selector / element — all elements play off that one element, cascading in DOM order
+//  null        — no scroll: plays on page reveal, cascading in DOM order (pages that never scroll)
+//  'manual'    — never plays by itself; drive it with playIn() / playOut() / setText()
+//Automatic modes play once, and only after reveal() (preloader / eye transition done) unless
+//waitForPageReveal is false.
 //
-//Mask styling (glyph bleed, first-line indent) lives in lineMasks.js.
-//
-//lineOffsetPercent must push the line fully past the bled mask edge:
+//direction — 'up': lines rise from below; 'down': drop from above. `out.direction` the same
+//for where they leave to. setDirection() flips both at runtime. offset must push a line fully past the bled mask edge:
 //offset * lineHeight > lineHeight + 2 * bleed (+ glyph overhang) — 150 covers 0.9 / 0.2em.
 //
-//autoSplit re-splits on font load / width change; a re-split after playing just leaves
-//the new lines in their final state.
+//by — what moves: 'lines' (default) or 'words'. Words still sit in per-line masks; `stagger`
+//then runs word by word, so keep it small on long texts (30 words × 0.08 = 2.4s).
+//
+//blurOn — 'parent' (one filter layer per block, cheaper) or 'lines' (= each moving unit).
+//blur: 0 turns it off.
+//Mask styling (glyph bleed, first-line indent) lives in lineMasks.js.
+//
+//autoSplit re-splits on font load / width change; a re-split lands on whatever the element
+//is meant to show right now (hidden, shown or out), never mid-tween.
 
 const DEFAULTS = {
+    //When
+    trigger: 'self',
     start: 'top 90%',
-    waitForScroll: true, //false — no ScrollTrigger, plays on reveal cascaded in DOM order (pages that never scroll)
-    lineOffsetPercent: 150,
-    blurStartPx: 12,
+    waitForPageReveal: true,
+    batchInterval: 0.1,
+    cascade: 0.12, //between elements playing together (batch / shared trigger / page reveal)
+
+    //In
+    by: 'lines', //'lines' | 'words'
+    direction: 'up',
+    offset: 150,
     duration: 1.1,
     stagger: 0.08,
     ease: 'power3.out',
+    delay: 0,
+
+    //Out — playOut()
+    out: {
+        direction: 'up',
+        offset: 150,
+        duration: 0.4,
+        stagger: 0.04,
+        ease: 'power3.in',
+    },
+
+    //Look
+    blur: 12,
+    blurOn: 'parent',
     maskBleed: '0.2em',
-    batchInterval: 0.1,
-    batchStagger: 0.12,
-    trigger: null,
-    onComplete: null, //(element) => {} — after that element's reveal finishes
+    split: 'lines',
+    splitOptions: {}, //extra SplitText config, e.g. { wordsClass: '…' }
+
+    //Hooks
     onSplit: null, //(element, split) => {} — after every (re-)split, masks already styled
-    splitOptions: {}, //extra SplitText config, e.g. { type: 'words, lines', wordsClass: '…' }
+    onComplete: null, //(element) => {} — once per element, after its first reveal
 }
+
+const MODE_MANUAL = 'manual'
+const MODE_SELF = 'self'
+const BY_WORDS = 'words'
+const WORD_CLASS = 'split-word'
+
+//Where an element's lines are (or are heading)
+const STATE_HIDDEN = 'hidden' //waiting on the entry side
+const STATE_SHOWN = 'shown'
+const STATE_OUT = 'out' //left through the exit side
 
 export class SplitBlurReveal extends Module {
 
-    constructor(selector, options = {}) {
+    constructor(targets, options = {}) {
         super()
-        this.selector = selector
-        this.options = { ...DEFAULTS, ...options }
+        this.targets = targets
+        this.options = { ...DEFAULTS, ...options, out: { ...DEFAULTS.out, ...options.out } }
     }
 
     setup() {
-        this.isRevealed = false
+        this.isRevealed = !this.options.waitForPageReveal
         this.items = []
         this.itemsByElement = new Map()
 
-        let elements = [...document.querySelectorAll(this.selector)]
+        let elements = this.resolveTargets()
         if (elements.length === 0) return
 
-        elements.forEach((element) => this.createItem(element))
+        elements.forEach((element, index) => this.createItem(element, index))
 
-        if (!this.options.waitForScroll) {
-            this.items.forEach((item, index) => {
-                item.delay = index * this.options.batchStagger
+        let { trigger } = this.options
+        if (trigger === MODE_MANUAL) return
+
+        if (trigger === null) {
+            this.items.forEach((item) => {
+                item.delay = item.index * this.options.cascade
                 item.isInView = true
             })
+            if (this.isRevealed) this.items.forEach((item) => this.tryAutoPlay(item))
             return
         }
 
-        let sharedTrigger = this.options.trigger ? document.querySelector(this.options.trigger) : null
+        if (trigger === MODE_SELF) {
+            this.watchEach(elements)
+            return
+        }
+
+        let sharedTrigger = typeof trigger === 'string' ? document.querySelector(trigger) : trigger
         if (sharedTrigger) this.watchShared(sharedTrigger)
-        else this.watch(elements)
+        else console.warn('SplitBlurReveal: trigger not found', trigger)
     }
 
-    createItem(element) {
-        let item = { element, delay: 0, split: null, lines: [], tween: null, isInView: false, hasPlayed: false }
+    //Called once the screen is visible
+    reveal() {
+        if (this.isRevealed) return
+        this.isRevealed = true
+        this.items?.forEach((item) => this.tryAutoPlay(item))
+    }
 
-        item.split = SplitText.create(element, {
-            type: 'lines',
-            ...this.options.splitOptions,
+    //Public — manual control (works in any mode)
+
+    //Lines into view, blur off. Resolves when every element has landed.
+    //extraDelay — seconds on top of options.delay, e.g. a cascade position set by the caller
+    playIn(extraDelay = 0) {
+        return Promise.all((this.items ?? []).map((item) => this.animateIn(item, extraDelay)))
+    }
+
+    //Lines out through the exit side, blur back on. Resolves when every element is out
+    playOut(extraDelay = 0) {
+        return Promise.all((this.items ?? []).map((item) => this.animateOut(item, extraDelay)))
+    }
+
+    //New text, re-split, parked hidden on the entry side — follow with playIn().
+    //"\n" becomes a forced line break (<br>); text is never parsed as markup
+    setText(text) {
+        this.items?.forEach((item) => {
+            item.tween?.kill()
+            item.split?.revert()
+            this.writeText(item.element, text)
+            item.state = STATE_HIDDEN
+            item.split = this.createSplit(item)
+        })
+    }
+
+    //Lines in place right away, no animation — e.g. content that should just be there on mount
+    show() {
+        this.items?.forEach((item) => {
+            item.tween?.kill()
+            item.hasPlayed = true
+            item.state = STATE_SHOWN
+            this.applyState(item)
+            this.complete(item)
+        })
+    }
+
+    //'up' | 'down' for both in and out — e.g. follow the scroll direction between plays.
+    //Parked lines move to the new entry side right away; lines mid-tween keep their course
+    setDirection(direction) {
+        if (direction !== 'up' && direction !== 'down') return
+        this.options.direction = direction
+        this.options.out.direction = direction
+        this.items?.forEach((item) => {
+            if (item.state === STATE_HIDDEN && !item.tween?.isActive()) this.applyState(item)
+        })
+    }
+
+    //Back to hidden on the entry side, no animation
+    reset() {
+        this.items?.forEach((item) => {
+            item.tween?.kill()
+            item.state = STATE_HIDDEN
+            this.applyState(item)
+        })
+    }
+
+    //Helpers
+
+    writeText(element, text) {
+        let nodes = []
+        String(text ?? '').split('\n').forEach((line, index) => {
+            if (index > 0) nodes.push(document.createElement('br'))
+            nodes.push(document.createTextNode(line))
+        })
+        element.replaceChildren(...nodes)
+    }
+
+    resolveTargets() {
+        let { targets } = this
+        if (!targets) return []
+        if (typeof targets === 'string') return [...document.querySelectorAll(targets)]
+        if (targets instanceof Element) return [targets]
+        return [...targets].filter((target) => target instanceof Element)
+    }
+
+    createItem(element, index) {
+        let item = { element, index, delay: 0, split: null, units: [], tween: null, state: STATE_HIDDEN, isInView: false, hasPlayed: false, hasCompleted: false }
+        this.items.push(item)
+        this.itemsByElement.set(element, item)
+        item.split = this.createSplit(item)
+        return item
+    }
+
+    //Word mode needs words in the split even if `split` only asks for lines
+    splitType() {
+        let { split, by } = this.options
+        if (by === BY_WORDS && !split.includes('words')) return `words, ${split}`
+        return split
+    }
+
+    //Words always carry WORD_CLASS (main.css zeroes their inherited text-indent), plus any caller class
+    createSplit(item) {
+        let { splitOptions } = this.options
+        return SplitText.create(item.element, {
+            type: this.splitType(),
+            ...splitOptions,
+            wordsClass: [WORD_CLASS, splitOptions.wordsClass].filter(Boolean).join(' '),
             mask: 'lines',
             autoSplit: true,
             onSplit: (split) => this.onSplit(item, split),
         })
-
-        this.items.push(item)
-        this.itemsByElement.set(element, item)
-        return item
     }
 
     //Elements entering together arrive as one batch — position in the batch sets the delay
-    watch(elements) {
+    watchEach(elements) {
         let triggers = ScrollTrigger.batch(elements, {
             start: this.options.start,
             once: true,
@@ -98,9 +244,9 @@ export class SplitBlurReveal extends Module {
             onEnter: (batch) => batch.forEach((element, index) => {
                 let item = this.itemsByElement.get(element)
                 if (!item) return
-                item.delay = index * this.options.batchStagger
+                item.delay = index * this.options.cascade
                 item.isInView = true
-                this.tryPlay(item)
+                this.tryAutoPlay(item)
             }),
         })
         triggers.forEach((trigger) => this.animate(trigger))
@@ -112,56 +258,51 @@ export class SplitBlurReveal extends Module {
             trigger: triggerElement,
             start: this.options.start,
             once: true,
-            onEnter: () => this.items.forEach((item, index) => {
-                item.delay = index * this.options.batchStagger
+            onEnter: () => this.items.forEach((item) => {
+                item.delay = item.index * this.options.cascade
                 item.isInView = true
-                this.tryPlay(item)
+                this.tryAutoPlay(item)
             }),
         }))
     }
 
-    //Called once the screen is visible
-    reveal() {
-        if (this.isRevealed) return
-        this.isRevealed = true
-        this.items?.forEach((item) => this.tryPlay(item))
-    }
-
-    //Helpers
-
     onSplit(item, split) {
         item.tween?.kill()
-        item.lines = split.lines
+        item.units = this.options.by === BY_WORDS ? split.words : split.lines
         styleLineMasks(split.masks, this.options.maskBleed)
         this.options.onSplit?.(item.element, split)
 
-        //Re-split after playing (or mid-play — the tween was just killed) lands on the final state
-        if (item.hasPlayed) {
-            gsap.set(item.element, { clearProps: 'filter' })
-            this.complete(item)
-            return
-        }
-        gsap.set(split.lines, { yPercent: this.options.lineOffsetPercent })
-        gsap.set(item.element, { filter: `blur(${this.options.blurStartPx}px)` })
+        //Re-split mid-tween lands on where that tween was heading
+        this.applyState(item)
+        if (item.state === STATE_SHOWN && item.hasPlayed) this.complete(item)
     }
 
-    //Animations
+    //Instant pose for the item's state
+    applyState(item) {
+        let { blur } = this.options
+        if (!item.units?.length) return //empty text splits into nothing
+        if (item.state === STATE_SHOWN) {
+            gsap.set(item.units, { yPercent: 0 })
+            gsap.set(this.blurTargets(item), { clearProps: 'filter' })
+            return
+        }
+        gsap.set(item.units, { yPercent: item.state === STATE_OUT ? this.outOffset() : this.inOffset() })
+        if (blur > 0) gsap.set(this.blurTargets(item), { filter: `blur(${blur}px)` })
+    }
 
-    tryPlay(item) {
-        if (!this.isRevealed || !item.isInView || item.hasPlayed) return
-        item.hasPlayed = true
+    blurTargets(item) {
+        return this.options.blurOn === 'lines' ? item.units : [item.element]
+    }
 
-        let { duration, stagger, ease } = this.options
-        item.tween = gsap.timeline({
-            delay: item.delay,
-            //Leftover filter keeps the layer expensive — drop it once done
-            onComplete: () => {
-                gsap.set(item.element, { clearProps: 'filter' })
-                this.complete(item)
-            },
-        })
-            .to(item.lines, { yPercent: 0, duration, stagger, ease }, 0)
-            .to(item.element, { filter: 'blur(0px)', duration, ease }, 0)
+    //Entry side: 'up' starts below (+), 'down' above (-)
+    inOffset() {
+        return this.options.direction === 'down' ? -this.options.offset : this.options.offset
+    }
+
+    //Exit side: 'up' leaves above (-), 'down' below (+)
+    outOffset() {
+        let { direction, offset } = this.options.out
+        return direction === 'down' ? offset : -offset
     }
 
     //Fires options.onComplete(element) once per element — also when a re-split cut the reveal short
@@ -171,7 +312,55 @@ export class SplitBlurReveal extends Module {
         this.options.onComplete?.(item.element)
     }
 
-    //Cleanup — revert restores the original markup
+    //Animations
+
+    tryAutoPlay(item) {
+        if (!this.isRevealed || !item.isInView || item.hasPlayed) return
+        this.animateIn(item, item.delay)
+    }
+
+    animateIn(item, extraDelay = 0) {
+        let { duration, stagger, ease, delay, blur } = this.options
+        item.tween?.kill()
+        item.hasPlayed = true
+
+        //Coming back from the exit side — restart from the entry side, not across the mask
+        let hasUnits = item.units?.length > 0
+        if (hasUnits && item.state === STATE_OUT) gsap.set(item.units, { yPercent: this.inOffset() })
+        item.state = STATE_SHOWN
+
+        return new Promise((resolve) => {
+            let timeline = gsap.timeline({
+                delay: delay + extraDelay,
+                //Leftover filter keeps the layer expensive — drop it once done
+                onComplete: () => {
+                    gsap.set(this.blurTargets(item), { clearProps: 'filter' })
+                    this.complete(item)
+                    resolve()
+                },
+                onInterrupt: resolve,
+            })
+            if (hasUnits) timeline.to(item.units, { yPercent: 0, duration, stagger, ease }, 0)
+            if (blur > 0) timeline.to(this.blurTargets(item), { filter: 'blur(0px)', duration, ease }, 0)
+            item.tween = timeline
+        })
+    }
+
+    animateOut(item, extraDelay = 0) {
+        let { delay, blur } = this.options
+        let { duration, stagger, ease } = this.options.out
+        item.tween?.kill()
+        item.state = STATE_OUT
+
+        return new Promise((resolve) => {
+            let timeline = gsap.timeline({ delay: delay + extraDelay, onComplete: resolve, onInterrupt: resolve })
+            if (item.units?.length) timeline.to(item.units, { yPercent: this.outOffset(), duration, stagger, ease }, 0)
+            if (blur > 0) timeline.to(this.blurTargets(item), { filter: `blur(${blur}px)`, duration, ease }, 0)
+            item.tween = timeline
+        })
+    }
+
+    //Cleanup — revert restores the markup the split was made from
 
     destroy() {
         this.items?.forEach((item) => {
@@ -180,6 +369,7 @@ export class SplitBlurReveal extends Module {
             gsap.set(item.element, { clearProps: 'filter' })
         })
         this.items = []
+        this.itemsByElement?.clear()
         super.destroy()
     }
 }

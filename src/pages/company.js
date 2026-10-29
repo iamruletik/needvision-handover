@@ -1,7 +1,7 @@
 import { Module } from '../core/Module'
 import { StepFloater } from './company/StepFloater'
 import { ImageSettle } from './company/ImageSettle'
-import { SplitBlurReveal } from './company/SplitBlurReveal'
+import { SplitBlurReveal } from '../modules/SplitBlurReveal'
 import { BlurFadeReveal } from './company/BlurFadeReveal'
 import { CompanyTabs } from './company/CompanyTabs'
 import { CardTilt } from './company/CardTilt'
@@ -15,7 +15,6 @@ import { HeaderColorZones } from './company/HeaderColorZones'
 export class CompanyPage extends Module {
 
     setup() {
-        console.log('[page] COMPANY')
 
         this.children = [
             new HeaderColorZones(),
@@ -55,6 +54,5 @@ export class CompanyPage extends Module {
         this.children?.forEach((child) => child.destroy())
         this.children = []
         super.destroy()
-        console.log('[page] COMPANY destroyed')
     }
 }

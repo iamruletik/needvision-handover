@@ -32,6 +32,8 @@ export class FooterLight extends Module {
             console.warn('FooterLight: missing', { footer: !!this.footer, container: !!this.container, light: !!this.light })
             return
         }
+        //Hidden by CSS on this page (main.css "Footer Interactive Image") — nothing to light
+        if (this.container.getClientRects().length === 0) return
 
         let backgroundImage = getComputedStyle(this.light).backgroundImage
         let movableGradient = this.toMovableGradient(backgroundImage)

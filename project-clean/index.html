@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Need Vision Widget</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Roboto+Condensed:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <section class="widget" aria-label="Статистика виджета">
+        <div class="widget__text">
+          <div class="text-mask text-mask--title">
+            <div class="text-track" id="titleTrack"></div>
+          </div>
+
+          <div class="text-mask text-mask--copy">
+            <div class="text-track" id="copyTrack"></div>
+          </div>
+        </div>
+
+        <div class="widget__meta">
+          <div class="stepper" id="stepper" aria-label="Этапы виджета"></div>
+
+          <div class="widget__actions">
+            <button class="nav-button is-hidden" id="prevButton" type="button" aria-label="Предыдущее состояние">
+              <span class="nav-button__chrome" aria-hidden="true">
+                <img class="nav-button__arrow nav-button__arrow--prev" id="prevArrow" alt="" />
+              </span>
+            </button>
+
+            <button class="nav-button" id="nextButton" type="button" aria-label="Следующее состояние">
+              <span class="nav-button__chrome" aria-hidden="true">
+                <img class="nav-button__arrow" id="nextArrow" alt="" />
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="digits" aria-live="polite" aria-atomic="true">
+          <div class="digit-card" data-digit-index="0"></div>
+          <div class="digit-card" data-digit-index="1"></div>
+          <div class="digit-card" data-digit-index="2"></div>
+        </div>
+
+        <div class="digits-divider" aria-hidden="true"></div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

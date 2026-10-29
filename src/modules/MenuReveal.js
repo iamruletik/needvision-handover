@@ -1,6 +1,6 @@
 import { gsap } from '../core/gsap'
 import { Module } from '../core/Module'
-import { styleLineMasks } from '../pages/company/lineMasks'
+import { styleLineMasks } from './lineMasks'
 
 //Header menu open / close. One timeline: open() plays it, close() reverses it from wherever
 //it is — a click mid-animation just turns it around. snapClosed() jumps straight to shut

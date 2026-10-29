@@ -1,16 +1,15 @@
-import { gsap, ScrollTrigger, SplitText } from '../../core/gsap'
+import { gsap, ScrollTrigger } from '../../core/gsap'
 import { Module } from '../../core/Module'
-import { styleLineMasks } from './lineMasks'
+import { SplitBlurReveal } from '../../modules/SplitBlurReveal'
 
 //Company page "tabs" section — a vertical list of category buttons on the left
 //drives the heading + description in the content column. Content per tab lives
 //as data attributes on each button (data-tab-title/data-tab-description), so
 //copy stays editable from Webflow without touching this file.
 //
-//Text swap: heading + description are split into masked lines (same look as the
-//hero heading). Old lines rise out of their masks, text is replaced and re-split,
-//new lines rise in from below. Blur sits on the text containers (heading /
-//description), not on each line — one filter layer per block instead of one per line.
+//Text swap: heading + description are two manual SplitBlurReveals (the site's line
+//reveal). Old lines rise out of their masks, text is replaced and re-split, new lines
+//rise in from below; the description trails the heading by DESCRIPTION_DELAY.
 //
 //Image swap: images in .companypage_tabs-visual carry the same data-tab-target as
 //their button. Active image slides up and out, next one pushes in from below.
@@ -19,17 +18,15 @@ import { styleLineMasks } from './lineMasks'
 //Intro: plays when the page is revealed AND the section crossed INTRO_START —
 //buttons fade in staggered, text runs the same entry as a tab change, visual rises in.
 
-//Line Out
-const LINE_EXIT_PERCENT = -150
-const LINE_EXIT_DURATION = 0.4
-const LINE_EXIT_STAGGER = 0.04
-const LINE_EXIT_EASE = 'power3.in'
-
-//Line In
-const LINE_ENTER_PERCENT = 150
-const LINE_ENTER_DURATION = 0.9
-const LINE_ENTER_STAGGER = 0.06
-const LINE_ENTER_EASE = 'power3.out'
+//Text Reveal — SplitBlurReveal options shared by heading and description.
+//In / out offsets, blur (12px on the block) and mask bleed are the SplitBlurReveal defaults
+const TEXT_REVEAL_OPTIONS = {
+    trigger: 'manual',
+    duration: 0.9,
+    stagger: 0.06,
+    ease: 'power3.out',
+    out: { duration: 0.4, stagger: 0.04, ease: 'power3.in' },
+}
 
 //Image Push
 const IMAGE_DURATION = 1.1
@@ -45,9 +42,7 @@ const VISUAL_DURATION = 1.2
 const VISUAL_EASE = 'expo.out'
 const INTRO_TEXT_DELAY = 0.1
 
-const BLUR_PX = 12
-const DESCRIPTION_DELAY = 0.1 //description trails the heading
-const MASK_BLEED = '0.2em'
+const DESCRIPTION_DELAY = 0.1 //description trails the heading, in and out
 
 export class CompanyTabs extends Module {
 
@@ -72,13 +67,15 @@ export class CompanyTabs extends Module {
         if (this.activeImage) gsap.set(this.activeImage, { yPercent: 0 })
 
         this.originalTexts = { heading: this.heading.innerHTML, description: this.description.innerHTML }
-        this.splits = []
         this.isRevealed = false
         this.isInView = false
         this.hasIntroPlayed = false
-        this.splitText()
+        this.isDestroyed = false
 
-        gsap.set(this.textBlocks(), { filter: `blur(${BLUR_PX}px)` })
+        //Both start hidden (lines below their masks, blurred) until the intro plays them
+        this.headingReveal = new SplitBlurReveal(this.heading, TEXT_REVEAL_OPTIONS).mount()
+        this.descriptionReveal = new SplitBlurReveal(this.description, { ...TEXT_REVEAL_OPTIONS, delay: DESCRIPTION_DELAY }).mount()
+
         gsap.set(this.buttons, { autoAlpha: 0 })
         if (this.visual) gsap.set(this.visual, { y: VISUAL_OFFSET_PX, autoAlpha: 0 })
 
@@ -124,25 +121,8 @@ export class CompanyTabs extends Module {
 
     //Helpers
 
-    splitText() {
-        this.splits = [this.heading, this.description].map((element) => SplitText.create(element, {
-            type: 'lines',
-            mask: 'lines',
-            autoSplit: true,
-            onSplit: (split) => {
-                styleLineMasks(split.masks, MASK_BLEED)
-                //Re-split before the intro (font load, resize) must stay hidden
-                if (!this.hasIntroPlayed) gsap.set(split.lines, this.hiddenLineState())
-            },
-        }))
-    }
-
-    hiddenLineState() {
-        return { yPercent: LINE_ENTER_PERCENT }
-    }
-
-    textBlocks() {
-        return [this.heading, this.description]
+    textReveals() {
+        return [this.headingReveal, this.descriptionReveal]
     }
 
     imageFor(button) {
@@ -151,22 +131,11 @@ export class CompanyTabs extends Module {
         return this.visual.querySelector(`[data-tab-target="${CSS.escape(target)}"]`)
     }
 
-    revertSplits() {
-        this.splits?.forEach((split) => split.revert())
-        this.splits = []
-    }
-
+    //New copy into both blocks — re-split and parked hidden, ready for playEntry()
     renderTab(button) {
-        this.revertSplits()
-        this.heading.textContent = button.dataset.tabTitle || button.textContent.trim()
-        this.description.textContent = button.dataset.tabDescription || ''
+        this.headingReveal.setText(button.dataset.tabTitle || button.textContent.trim())
+        this.descriptionReveal.setText(button.dataset.tabDescription || '')
         this.displayedButton = button
-        this.splitText()
-    }
-
-    //[heading lines, description lines] — read fresh, autoSplit may have replaced them
-    currentLines() {
-        return this.splits.map((split) => split.lines)
     }
 
     //Animations
@@ -196,65 +165,27 @@ export class CompanyTabs extends Module {
         this.animate(gsap.delayedCall(INTRO_TEXT_DELAY, () => this.playEntry()))
     }
 
-    playSwap() {
+    //Old text out, new text in. The tab is locked in at the start so text and image match
+    async playSwap() {
         this.isAnimating = true
         let targetButton = this.activeButton
 
         this.playImageSwap(targetButton)
 
-        let exit = gsap.timeline({
-            onComplete: () => {
-                this.renderTab(targetButton)
-                this.playEntry()
-            },
-        })
-        this.animate(exit)
+        await Promise.all(this.textReveals().map((reveal) => reveal.playOut()))
+        if (this.isDestroyed) return
 
-        this.currentLines().forEach((lines, index) => {
-            let at = index * DESCRIPTION_DELAY
-            exit.to(lines, {
-                yPercent: LINE_EXIT_PERCENT,
-                duration: LINE_EXIT_DURATION,
-                stagger: LINE_EXIT_STAGGER,
-                ease: LINE_EXIT_EASE,
-            }, at)
-            exit.to(this.textBlocks()[index], {
-                filter: `blur(${BLUR_PX}px)`,
-                duration: LINE_EXIT_DURATION,
-                ease: LINE_EXIT_EASE,
-            }, at)
-        })
+        this.renderTab(targetButton)
+        this.playEntry()
     }
 
-    playEntry() {
-        let entry = gsap.timeline({
-            onComplete: () => {
-                //Leftover filter keeps the layer expensive — drop it once done
-                gsap.set(this.textBlocks(), { clearProps: 'filter' })
-                this.isAnimating = false
-                if (this.displayedButton !== this.activeButton) this.playSwap()
-            },
-        })
-        this.animate(entry)
+    //Entry for both blocks; afterwards runs one more swap if a click moved the target meanwhile
+    async playEntry() {
+        await Promise.all(this.textReveals().map((reveal) => reveal.playIn()))
+        if (this.isDestroyed) return
 
-        this.currentLines().forEach((lines, index) => {
-            let at = index * DESCRIPTION_DELAY
-            entry.fromTo(lines,
-                this.hiddenLineState(),
-                {
-                    yPercent: 0,
-                    duration: LINE_ENTER_DURATION,
-                    stagger: LINE_ENTER_STAGGER,
-                    ease: LINE_ENTER_EASE,
-                },
-                at
-            )
-            entry.fromTo(this.textBlocks()[index],
-                { filter: `blur(${BLUR_PX}px)` },
-                { filter: 'blur(0px)', duration: LINE_ENTER_DURATION, ease: LINE_ENTER_EASE },
-                at
-            )
-        })
+        this.isAnimating = false
+        if (this.displayedButton !== this.activeButton) this.playSwap()
     }
 
     //Active image leaves upward, next one pushes in from below
@@ -280,12 +211,13 @@ export class CompanyTabs extends Module {
     //Cleanup — kill timelines first, then restore Webflow markup
 
     destroy() {
+        this.isDestroyed = true
         super.destroy()
         if (this.images?.length) gsap.set(this.images, { clearProps: 'transform' })
         if (this.buttons?.length) gsap.set(this.buttons, { clearProps: 'opacity,visibility' })
         if (this.visual) gsap.set(this.visual, { clearProps: 'transform,opacity,visibility' })
-        if (this.heading && this.description) gsap.set(this.textBlocks(), { clearProps: 'filter' })
-        this.revertSplits()
+        this.headingReveal?.destroy()
+        this.descriptionReveal?.destroy()
         if (this.originalTexts) {
             this.heading.innerHTML = this.originalTexts.heading
             this.description.innerHTML = this.originalTexts.description

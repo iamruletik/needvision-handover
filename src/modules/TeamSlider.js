@@ -1,384 +1,302 @@
-import { gsap } from '../core/gsap'
+import { gsap, ScrollTrigger } from '../core/gsap'
 import { Module } from '../core/Module'
+import { SplitBlurReveal } from './SplitBlurReveal'
+import { SignatureDraw } from './SignatureDraw'
 
-//Team slider. Slot positions and sizes are measured once from the Webflow layout,
-//converted to vw, then everything goes position:absolute and animates in vw only —
-//scales with any viewport width without re-measuring. The .is-active slide in Webflow
-//marks the CENTRAL (large) slot; card #0 starts inside it.
-//Cards that would visibly crawl across the whole carousel (wrap-around moves)
-//teleport instead: fade out -> jump -> fade in.
-//Known limit: measured proportions freeze at load — a breakpoint change mid-session
-//(portrait flip) keeps desktop proportions until reload.
+//Home team section — the photos are the shared infinite gallery (GallerySlider, the
+//"infinite-slider" component inside .team_slider-sync); this module drives what's around it,
+//talking to the gallery through events on its stage.
+//
+//Intro — once, as soon as the slider comes into view after the page reveal: the gallery
+//glides INTRO_LANES photos on its own ("it drags"), and when it lands the info panel writes
+//itself in for that person — every .label-text and the texts rise in (SplitBlurReveal, DOM order),
+//the signature draws. Until then texts and signature stay hidden.
+//
+//After the intro, gallery:settle swaps the panel to the centered person: name, role, quote,
+//description and number play out, take the new text, play in; the signature redraws
+//(SignatureDraw — inline SVG embed in .team-sign_wrapper; a plain <img> there falls back to
+//a blur swap). Next button → gallery:step, dots → gallery:go (dots follow the person count).
+//The name lives in .team_nav-spacer, under the central photo — placed by Webflow, not here.
+//Each person's content lives on their pool image (.casepage_gallery-images):
+//  data-name ("|" = line break), data-role, data-quote, data-description, data-sign (SVG URL)
 
-const ANIMATION_DURATION = 1.0
-const ANIMATION_EASE = 'power2.inOut'
-const DRAG_THRESHOLD_MOUSE = 50
-const DRAG_THRESHOLD_TOUCH = 40
+const SYNC_SELECTOR = '.team_slider-sync'
+const STAGE_SELECTOR = '[data-gallery="root"]'
+const LABEL_SELECTOR = '.label-text'
+const SETTLE_EVENT = 'gallery:settle'
+const STEP_EVENT = 'gallery:step'
+const GO_EVENT = 'gallery:go'
+const GLIDE_EVENT = 'gallery:glide'
+const LINE_SEPARATOR = '|'
 
-//Text swap
-const TEXT_EXIT_DURATION = 0.4
-const TEXT_ENTRY_DURATION = 0.6
-const TEXT_STAGGER = 0.04
-const TEXT_BLUR_PX = 6
-const TEXT_SHIFT = '0.69vw'
+//Intro — timed glide, then reveal
+const INTRO_START = 'top bottom' //slider's top edge enters the viewport
+const INTRO_LANES = 2 //negative = backwards
+const INTRO_GLIDE_DURATION = 2
+const INTRO_FALLBACK_MARGIN = 0.4 //glide refused (user mid-drag)? intro plays anyway after this
+const INTRO_GAP = 0.06 //between consecutive revealed elements
+
+//Swap — SplitBlurReveal, consecutive texts this far apart
+const TEXT_GAP = 0.05
+
+//<img> signature fallback — blur swap
+const BLUR_EXIT_DURATION = 0.4
+const BLUR_ENTRY_DURATION = 0.6
+const BLUR_PX = 6
+const BLUR_SHIFT = '0.69vw'
+const DOT_DURATION = 0.3
+
+//Swapped texts, in cascade order. number: the person's position, not a data attribute
+const TEXT_FIELDS = [
+    { key: 'name', selector: '.team_nav-spacer .team_data-name' },
+    { key: 'role', selector: '.team_role-text' },
+    { key: 'quote', selector: '.team_quote-text' },
+    { key: 'description', selector: '.team_desc-text' },
+    { key: 'number', selector: null },
+]
 
 export class TeamSlider extends Module {
 
     setup() {
-        this.track = document.querySelector('.team_photo-track')
-        this.slides = [...document.querySelectorAll('.team_photo-slide')]
-        if (!this.track || this.slides.length === 0) return
+        this.sync = document.querySelector(SYNC_SELECTOR)
+        this.stage = this.sync?.querySelector(STAGE_SELECTOR)
+        if (!this.stage) return
 
-        this.totalSlides = this.slides.length
-        this.activeIndex = 0
-        this.isAnimating = false
-
-        this.dividers = [...document.querySelectorAll('.team_div')]
-        this.nextButton = document.querySelector('.team_nav-btn')
-
-        this.syncDotCount()
-        this.dots = [...document.querySelectorAll('.team_dot')]
-        this.dotFills = this.dots.map((dot) => dot.querySelector('.team_dot-full'))
-        this.slideHeaders = this.slides.map((slide) => slide.querySelector('.team_member-header'))
-
-        this.textTargets = {
-            role: document.querySelector('.team_role-text'),
-            quote: document.querySelector('.team_quote-text'),
-            description: document.querySelector('.team_desc-text'),
-            signature: document.querySelector('.team-sign'),
-        }
-
-        //Slide number lives in the second .label-wrapper inside .team_info-meta
-        let metaLabels = document.querySelectorAll('.team_info-meta .label-wrapper')
-        this.numberTarget = metaLabels.length > 1
-            ? metaLabels[1].querySelectorAll('.label-text')[1]
+        //Person number lives in the second .label-wrapper inside .team_info-meta
+        let metaLabels = this.sync.querySelectorAll('.team_info-meta .label-wrapper')
+        let numberElement = metaLabels.length > 1
+            ? metaLabels[1].querySelectorAll(LABEL_SELECTOR)[1] ?? null
             : null
 
-        this.measureSlots()
-        this.applyAbsoluteLayout()
+        this.texts = TEXT_FIELDS
+            .map(({ key, selector }) => {
+                let element = key === 'number' ? numberElement : this.sync.querySelector(selector)
+                if (!element) return null
+                return { key, element, reveal: this.createReveal(element) }
+            })
+            .filter(Boolean)
 
-        if (this.totalSlides > 1) this.bindControls()
-    }
+        //Static labels ("Должность", "№ •", "пара слов") — intro only
+        let textElements = this.texts.map((text) => text.element)
+        this.labels = [...this.sync.querySelectorAll(LABEL_SELECTOR)]
+            .filter((label) => !textElements.includes(label))
+            .map((element) => ({ element, reveal: this.createReveal(element) }))
 
-    syncDotCount() {
-        let container = document.querySelector('.team_pagination')
-        if (!container) return
+        //Inline SVG embed → draw; still the old <img> → blur swap
+        let signatureContainer = this.sync.querySelector('.team-sign_wrapper')
+        this.signatureDraw = signatureContainer?.querySelector('svg') ? new SignatureDraw(signatureContainer) : null
+        this.signature = this.signatureDraw ? null : this.sync.querySelector('img.team-sign')
+        this.signatureDraw?.hide()
+        if (this.signature) gsap.set(this.signature, { opacity: 0 })
 
-        let existing = [...container.querySelectorAll('.team_dot')]
-        while (existing.length > this.totalSlides) existing.pop().remove()
+        this.nextButton = this.sync.querySelector('.team_nav-btn')
+        this.dotsContainer = this.sync.querySelector('.team_pagination')
+        this.dots = []
+        this.activeIndex = -1
+        this.lastDetail = null
+        this.swapId = 0
+        this.isRevealed = false
+        this.isInView = false
+        this.isIntroPending = false
+        this.hasIntroPlayed = false
 
-        if (existing.length > 0 && existing.length < this.totalSlides) {
-            let template = existing[0]
-            while (existing.length < this.totalSlides) {
-                let clone = template.cloneNode(true)
-                let fullImage = clone.querySelector('.team_dot-full')
-                let emptyImage = clone.querySelector('.team_dot-empty')
-                if (fullImage) fullImage.style.opacity = '0'
-                if (emptyImage) emptyImage.style.opacity = '1'
-                container.appendChild(clone)
-                existing.push(clone)
-            }
-        }
-    }
-
-    //Measurement — everything in vw so the layout scales
-
-    measureSlots() {
-        //Central slot = the .is-active slide in Webflow (a SLOT index, not a card)
-        this.centralSlotIndex = Math.max(0, this.slides.findIndex((slide) => slide.classList.contains('is-active')))
-
-        let trackRect = this.track.getBoundingClientRect()
-        let trackCenterX = trackRect.left + trackRect.width / 2
-        let viewportWidthUnit = window.innerWidth / 100
-        const toVw = (px) => px / viewportWidthUnit
-
-        this.trackHeightVw = toVw(trackRect.height)
-
-        this.slotPositions = this.slides.map((slide) => {
-            let rect = slide.getBoundingClientRect()
-            return {
-                x: toVw(rect.left + rect.width / 2 - trackCenterX),
-                bottom: toVw(trackRect.bottom - rect.bottom),
-                width: toVw(rect.width),
-                height: toVw(rect.height),
-            }
-        })
-
-        this.dividerPositions = this.dividers.map((divider) => {
-            let rect = divider.getBoundingClientRect()
-            return {
-                x: toVw(rect.left + rect.width / 2 - trackCenterX),
-                bottom: toVw(trackRect.bottom - rect.bottom),
-            }
-        })
-
-        let central = this.slotPositions[this.centralSlotIndex]
-        this.activeSize = { width: central.width, height: central.height }
-
-        let smallSlot = this.slotPositions.find((slot, index) => index !== this.centralSlotIndex)
-        this.smallSize = smallSlot
-            ? { width: smallSlot.width, height: smallSlot.height }
-            : { ...this.activeSize }
-    }
-
-    applyAbsoluteLayout() {
-        this.track.style.cssText += `
-            display: block !important;
-            position: relative !important;
-            height: ${this.trackHeightVw}vw !important;
-            width: 100% !important;
-            overflow: visible !important;
-        `
-
-        this.slides.forEach((slide) => {
-            slide.classList.remove('is-active')
-            slide.querySelector('.team_member-header')?.classList.remove('is-hidden')
-            slide.style.cssText += `
-                position: absolute !important;
-                left: 50% !important;
-                min-width: 0 !important;
-                max-width: none !important;
-                margin: 0 !important;
-                transition: none !important;
-            `
-        })
-
-        gsap.set(this.slides, { xPercent: -50, yPercent: 0, transformOrigin: 'center bottom' })
-
-        this.dividers.forEach((divider, index) => {
-            divider.style.cssText += `
-                position: absolute !important;
-                bottom: ${this.dividerPositions[index].bottom}vw !important;
-                left: 50% !important;
-                margin: 0 !important;
-                transition: none !important;
-            `
-            gsap.set(divider, { xPercent: -50, x: `${this.dividerPositions[index].x}vw` })
-        })
-
-        //Card #0 into the central slot, the rest distributed around it
-        this.currentSlotByCard = new Array(this.totalSlides)
-        this.slides.forEach((slide, index) => {
-            let state = this.slideState(index)
-            this.currentSlotByCard[index] = this.physicalSlot(index)
-
-            slide.style.cssText += `
-                bottom: ${state.bottom}vw !important;
-                width: ${state.width}vw !important;
-                height: ${state.height}vw !important;
-            `
-            gsap.set(slide, { x: `${state.x}vw`, zIndex: state.z })
-
-            let header = this.slideHeaders[index]
-            if (header) gsap.set(header, { opacity: index === this.activeIndex ? 1 : 0 })
-        })
-
-        this.dotFills.forEach((fill, index) => {
-            if (fill) gsap.set(fill, { opacity: index === this.activeIndex ? 1 : 0 })
-        })
-    }
-
-    //Card -> physical slot mapping with carousel wrap
-
-    physicalSlot(cardIndex) {
-        let offset = cardIndex - this.activeIndex
-        if (offset > Math.floor(this.totalSlides / 2)) offset -= this.totalSlides
-        if (offset < -Math.floor(this.totalSlides / 2)) offset += this.totalSlides
-
-        let slot = this.centralSlotIndex + offset
-        while (slot < 0) slot += this.totalSlides
-        while (slot >= this.totalSlides) slot -= this.totalSlides
-        return slot
-    }
-
-    slideState(cardIndex) {
-        let slot = this.physicalSlot(cardIndex)
-        let isCentral = slot === this.centralSlotIndex
-        let size = isCentral ? this.activeSize : this.smallSize
-
-        return {
-            x: this.slotPositions[slot].x,
-            bottom: this.slotPositions[slot].bottom,
-            width: size.width,
-            height: size.height,
-            z: isCentral ? 10 : 5,
-            headerOpacity: isCentral ? 1 : 0,
-        }
-    }
-
-    //Transitions
-
-    goTo(newIndex) {
-        if (this.isAnimating || newIndex === this.activeIndex) return
-        this.isAnimating = true
-
-        let previousSlots = this.currentSlotByCard.slice()
-        this.activeIndex = newIndex
-        this.slides.forEach((slide, index) => {
-            this.currentSlotByCard[index] = this.physicalSlot(index)
-        })
-
-        //Moves longer than half the carousel would crawl across the screen — teleport those
-        let wrapThreshold = this.totalSlides / 2
-
-        const transition = this.animate(gsap.timeline({
-            defaults: { duration: ANIMATION_DURATION, ease: ANIMATION_EASE },
-            onComplete: () => { this.isAnimating = false },
-        }))
-
-        this.slides.forEach((slide, index) => {
-            let state = this.slideState(index)
-            let wraps = Math.abs(this.currentSlotByCard[index] - previousSlots[index]) > wrapThreshold
-
-            if (wraps) {
-                //Fade out -> instant jump -> fade in, all inside the shared duration
-                let fadeDuration = ANIMATION_DURATION * 0.3
-                transition.to(slide, { opacity: 0, duration: fadeDuration, ease: 'power2.in' }, 0)
-                transition.set(slide, {
-                    x: `${state.x}vw`,
-                    bottom: `${state.bottom}vw`,
-                    width: `${state.width}vw`,
-                    height: `${state.height}vw`,
-                    zIndex: state.z,
-                }, fadeDuration)
-                transition.to(slide, { opacity: 1, duration: fadeDuration, ease: 'power2.out' }, ANIMATION_DURATION - fadeDuration)
-            } else {
-                transition.to(slide, {
-                    x: `${state.x}vw`,
-                    bottom: `${state.bottom}vw`,
-                    width: `${state.width}vw`,
-                    height: `${state.height}vw`,
-                    zIndex: state.z,
-                }, 0)
-            }
-
-            let header = this.slideHeaders[index]
-            if (header) {
-                transition.to(header, {
-                    opacity: state.headerOpacity,
-                    duration: ANIMATION_DURATION * 0.5,
-                    ease: 'power2.out',
-                }, state.headerOpacity === 1 ? ANIMATION_DURATION * 0.5 : 0)
-            }
-        })
-
-        this.dotFills.forEach((fill, index) => {
-            if (fill) transition.to(fill, { opacity: index === this.activeIndex ? 1 : 0, duration: 0.3 }, 0)
-        })
-
-        this.swapTexts()
-    }
-
-    swapTexts() {
-        let activeSlide = this.slides[this.activeIndex]
-        let newContent = {
-            role: activeSlide.querySelector('.team_data-role')?.innerHTML || '',
-            quote: activeSlide.querySelector('.team_data-quote')?.innerHTML || '',
-            description: activeSlide.querySelector('.team_data-description')?.innerHTML || '',
-            signatureSource: activeSlide.querySelector('.team_data-sign')?.getAttribute('src') || '',
+        this.listen(this.stage, SETTLE_EVENT, (event) => this.onSettle(event.detail))
+        if (this.nextButton) {
+            this.listen(this.nextButton, 'click', (event) => {
+                event.preventDefault()
+                this.stage.dispatchEvent(new CustomEvent(STEP_EVENT, { detail: { direction: 1 } }))
+            })
         }
 
-        let elements = [
-            this.textTargets.role,
-            this.textTargets.quote,
-            this.textTargets.description,
-            this.textTargets.signature,
-            this.numberTarget,
-        ].filter((element) => element)
-        if (elements.length === 0) return
-
-        //Blur renders as squares on retina without these
-        elements.forEach((element) => {
-            element.style.willChange = 'filter, transform, opacity'
-            element.style.backfaceVisibility = 'hidden'
-        })
-
-        const swap = this.animate(gsap.timeline({
-            onComplete: () => {
-                elements.forEach((element) => { element.style.willChange = 'auto' })
+        this.animate(ScrollTrigger.create({
+            trigger: this.stage,
+            start: INTRO_START,
+            once: true,
+            onEnter: () => {
+                this.isInView = true
+                this.startIntro()
             },
         }))
 
-        swap.to(elements, {
-            y: `-${TEXT_SHIFT}`,
-            opacity: 0,
-            filter: `blur(${TEXT_BLUR_PX}px)`,
-            duration: TEXT_EXIT_DURATION,
-            stagger: TEXT_STAGGER,
-            ease: 'power2.in',
-        })
-
-        swap.call(() => {
-            if (this.textTargets.role) this.textTargets.role.innerHTML = newContent.role
-            if (this.textTargets.quote) this.textTargets.quote.innerHTML = newContent.quote
-            if (this.textTargets.description) this.textTargets.description.innerHTML = newContent.description
-            if (this.numberTarget) this.numberTarget.innerHTML = this.activeIndex + 1
-            if (this.textTargets.signature && newContent.signatureSource) {
-                this.textTargets.signature.src = newContent.signatureSource
-                this.textTargets.signature.removeAttribute('srcset')
-            }
-        })
-
-        swap.fromTo(elements,
-            { y: TEXT_SHIFT, opacity: 0, filter: `blur(${TEXT_BLUR_PX}px)` },
-            {
-                y: 0,
-                opacity: 1,
-                filter: 'blur(0px)',
-                duration: TEXT_ENTRY_DURATION,
-                stagger: TEXT_STAGGER,
-                ease: 'power2.out',
-            }
-        )
+        //Gallery mounted first — pick up where it already is
+        if (this.stage.galleryState) this.onSettle({ ...this.stage.galleryState, isInitial: true })
     }
 
-    //Controls
-
-    next() {
-        this.goTo((this.activeIndex + 1) % this.totalSlides)
+    //Called once the screen is visible
+    reveal() {
+        if (!this.stage || this.isRevealed) return
+        this.isRevealed = true
+        this.startIntro()
     }
 
-    previous() {
-        this.goTo((this.activeIndex - 1 + this.totalSlides) % this.totalSlides)
+    //Helpers
+
+    createReveal(element) {
+        return new SplitBlurReveal(element, { trigger: 'manual' }).mount()
     }
 
-    bindControls() {
-        if (this.nextButton) this.listen(this.nextButton, 'click', () => this.next())
+    onSettle(detail) {
+        if (!detail) return
+        //An intro glide can land on the same person (e.g. a full loop) and still has to play
+        if (detail.index === this.activeIndex && !this.isIntroPending) return
+        if (this.dots.length !== detail.count) this.syncDots(detail.count)
 
-        this.slides.forEach((slide, index) => {
-            this.listen(slide, 'click', () => {
-                if (index !== this.activeIndex && !this.isAnimating) this.goTo(index)
-            })
-        })
+        let isFirst = this.activeIndex === -1
+        this.activeIndex = detail.index
+        this.lastDetail = detail
+        this.setActiveDot(detail.index, isFirst)
+        //The embed already holds the first person's signature — no fetch for that URL
+        if (isFirst && this.signatureDraw) this.signatureDraw.currentUrl = detail.data?.sign ?? ''
 
+        if (this.isIntroPending) {
+            this.playIntro(detail)
+            return
+        }
+        //Before the intro: text just follows, parked hidden for the intro to bring in
+        if (!this.hasIntroPlayed) {
+            this.applyTexts(detail)
+            return
+        }
+        this.swapContent(detail)
+    }
+
+    //Webflow has a static dot count — trim extras, clone missing from the first
+    syncDots(count) {
+        if (!this.dotsContainer) return
+        let existing = [...this.dotsContainer.querySelectorAll('.team_dot')]
+        while (existing.length > count) existing.pop().remove()
+
+        let template = existing[0]
+        while (template && existing.length < count) {
+            let clone = template.cloneNode(true)
+            this.dotsContainer.appendChild(clone)
+            existing.push(clone)
+        }
+
+        this.dots = existing
+        this.dotFills = existing.map((dot) => dot.querySelector('.team_dot-full'))
         this.dots.forEach((dot, index) => {
             this.listen(dot, 'click', () => {
-                if (index !== this.activeIndex && !this.isAnimating && index < this.totalSlides) this.goTo(index)
+                if (index === this.activeIndex) return
+                this.stage.dispatchEvent(new CustomEvent(GO_EVENT, { detail: { index } }))
             })
         })
+    }
 
-        let dragStartX = 0
-        let isDragging = false
+    setActiveDot(index, isInstant = false) {
+        this.dotFills?.forEach((fill, dotIndex) => {
+            if (!fill) return
+            let opacity = dotIndex === index ? 1 : 0
+            if (isInstant) gsap.set(fill, { opacity })
+            else gsap.to(fill, { opacity, duration: DOT_DURATION, overwrite: 'auto' })
+        })
+    }
 
-        this.listen(this.track, 'mousedown', (event) => {
-            dragStartX = event.clientX
-            isDragging = true
-        })
-        this.listen(window, 'mouseup', (event) => {
-            if (!isDragging) return
-            isDragging = false
-            let distance = dragStartX - event.clientX
-            if (distance > DRAG_THRESHOLD_MOUSE) this.next()
-            if (distance < -DRAG_THRESHOLD_MOUSE) this.previous()
-        })
+    textValue(key, { index, data = {} }, element) {
+        if (key === 'number') return String(index + 1)
+        return data[key] ?? element.textContent
+    }
 
-        this.listen(this.track, 'touchstart', (event) => {
-            dragStartX = event.touches[0].clientX
-        }, { passive: true })
-        this.listen(this.track, 'touchend', (event) => {
-            let distance = dragStartX - event.changedTouches[0].clientX
-            if (distance > DRAG_THRESHOLD_TOUCH) this.next()
-            if (distance < -DRAG_THRESHOLD_TOUCH) this.previous()
+    //New text into every reveal, parked hidden — a field the person has no data for keeps its text
+    applyTexts(detail) {
+        this.texts?.forEach(({ key, element, reveal }) => {
+            let value = this.textValue(key, detail, element)
+            reveal.setText(value.split(LINE_SEPARATOR).map((line) => line.trim()).join('\n'))
         })
+    }
+
+    applyImageSignature({ data = {} }) {
+        if (!this.signature || !data.sign) return
+        this.signature.src = data.sign
+        this.signature.removeAttribute('srcset')
+    }
+
+    //Animations
+
+    //Slider in view + page revealed: the gallery glides, its settle plays the intro.
+    //A refused glide (user already dragging) still gets the intro, on the current person
+    startIntro() {
+        if (!this.isRevealed || !this.isInView || this.hasIntroPlayed || this.isIntroPending) return
+        this.isIntroPending = true
+        this.stage.dispatchEvent(new CustomEvent(GLIDE_EVENT, {
+            detail: { lanes: INTRO_LANES, duration: INTRO_GLIDE_DURATION },
+        }))
+        this.introFallback = gsap.delayedCall(INTRO_GLIDE_DURATION + INTRO_FALLBACK_MARGIN, () => {
+            if (this.isIntroPending && this.lastDetail) this.playIntro(this.lastDetail)
+        })
+    }
+
+    //Labels + texts rise in together, cascading in DOM order; the signature draws
+    playIntro(detail) {
+        this.isIntroPending = false
+        this.hasIntroPlayed = true
+        this.introFallback?.kill()
+
+        this.applyTexts(detail)
+        let reveals = [...this.labels, ...(this.texts ?? [])]
+            .sort((a, b) => (a.element.compareDocumentPosition(b.element) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+        reveals.forEach(({ reveal }, index) => reveal.playIn(index * INTRO_GAP))
+
+        if (this.signatureDraw) this.signatureDraw.swap(detail.data?.sign)
+        else if (this.signature) {
+            this.applyImageSignature(detail)
+            gsap.to(this.signature, { opacity: 1, duration: BLUR_ENTRY_DURATION, ease: 'power2.out' })
+        }
+    }
+
+    //Texts out, new person's texts in; a newer settle cuts this one off (newest wins).
+    //The signature redraws alongside
+    async swapContent(detail) {
+        let swapId = ++this.swapId
+        if (this.signatureDraw) this.signatureDraw.swap(detail.data?.sign)
+        else this.swapImageSignature(detail)
+
+        await Promise.all(this.texts.map((text, index) => text.reveal.playOut(index * TEXT_GAP)))
+        if (swapId !== this.swapId || !this.texts) return
+
+        this.applyTexts(detail)
+        this.texts.forEach((text, index) => text.reveal.playIn(index * TEXT_GAP))
+    }
+
+    swapImageSignature(detail) {
+        if (!this.signature) return
+
+        //Blur renders as squares on retina without these
+        this.signature.style.willChange = 'filter, transform, opacity'
+        this.signature.style.backfaceVisibility = 'hidden'
+
+        this.blurTimeline?.kill()
+        this.blurTimeline = gsap.timeline({
+            onComplete: () => { this.signature.style.willChange = 'auto' },
+        })
+            .to(this.signature, {
+                y: `-${BLUR_SHIFT}`,
+                opacity: 0,
+                filter: `blur(${BLUR_PX}px)`,
+                duration: BLUR_EXIT_DURATION,
+                ease: 'power2.in',
+            })
+            .call(() => this.applyImageSignature(detail))
+            .fromTo(this.signature,
+                { y: BLUR_SHIFT, opacity: 0, filter: `blur(${BLUR_PX}px)` },
+                { y: 0, opacity: 1, filter: 'blur(0px)', duration: BLUR_ENTRY_DURATION, ease: 'power2.out' }
+            )
+    }
+
+    //Cleanup
+
+    destroy() {
+        this.swapId++
+        this.introFallback?.kill()
+        this.blurTimeline?.kill()
+        this.signatureDraw?.destroy()
+        this.signatureDraw = null
+        if (this.signature) gsap.set(this.signature, { clearProps: 'transform,opacity,filter,willChange' })
+        this.texts?.forEach((text) => text.reveal.destroy())
+        this.texts = null
+        this.labels?.forEach((label) => label.reveal.destroy())
+        this.labels = []
+        this.dotFills?.forEach((fill) => fill && gsap.killTweensOf(fill))
+        super.destroy()
     }
 }

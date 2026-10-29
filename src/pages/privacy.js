@@ -5,7 +5,6 @@ import { Module } from '../core/Module'
 export class PrivacyPage extends Module {
 
     setup() {
-        console.log('[page] PRIVACY')
 
         this.children = [].map((child) => child.mount())
     }
@@ -19,6 +18,5 @@ export class PrivacyPage extends Module {
         this.children?.forEach((child) => child.destroy())
         this.children = []
         super.destroy()
-        console.log('[page] PRIVACY destroyed')
     }
 }

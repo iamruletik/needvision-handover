@@ -165,6 +165,13 @@
 }
 
 
+/* Split Words — SplitText measures lines on inline-block word divs; they'd inherit the text's
+   text-indent and each word would get pushed by it. SplitBlurReveal tags them with this class */
+.split-word {
+    text-indent: 0;
+}
+
+
 /* Marquee — Marquee.js clones content and sets --marquee-duration, CSS does the scrolling */
 [data-marquee-ready] {
     display: flex;
@@ -280,6 +287,41 @@
 }
 
 
+/* Footer Check Again Arrow — the Webflow embed holds the arrow + a copy 13 units below it in a
+   track clipped to the inner circle (clipPath r=9). Hovering the link lifts the track by the same
+   13 units: arrow rolls out the top, copy lands where it was. Outer circle shrinks a bit, label
+   dims. SVG px = viewBox units */
+.footer_action-link-2 {
+    --check-again-duration: 0.5s;
+    --check-again-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+    --check-again-roll: -13px;
+    --check-again-outer-scale: 0.9;
+    --check-again-label-opacity: 0.65;
+}
+.check-again-arrow__outer {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform var(--check-again-duration) var(--check-again-ease);
+}
+.check-again-arrow__track {
+    transition: transform var(--check-again-duration) var(--check-again-ease);
+}
+.footer_action-link-2 > div {
+    transition: opacity var(--check-again-duration) var(--check-again-ease);
+}
+@media (hover: hover) {
+    .footer_action-link-2:hover .check-again-arrow__outer {
+        transform: scale(var(--check-again-outer-scale));
+    }
+    .footer_action-link-2:hover .check-again-arrow__track {
+        transform: translateY(var(--check-again-roll));
+    }
+    .footer_action-link-2:hover > div {
+        opacity: var(--check-again-label-opacity);
+    }
+}
+
+
 /* Header Cases Arrow — IconRoll.js wraps the svg: mask > track > [svg, clone]. Clone waits
    one size + gap down-left; hovering the link moves the track the same amount up-right, so
    the arrow leaves through the top-right corner and the clone lands where it was.
@@ -391,6 +433,12 @@
     height: var(--profit-digit-height);
 }
 
+
+/* Divider lines invert with the links when the header compacts (HeaderCompact.js adds .is-inverted).
+   Webflow base is --header-color; the links' own .is-inverted combo lives in Webflow */
+.menu-line-divider.is-inverted {
+    background-color: var(--main-colours--small-header-color);
+}
 
 /* Divider lines are drawn with background-color — fade it with the links' color, same
    compact / spread window. More specific than the color-only rule above so it isn't overridden */
@@ -509,12 +557,62 @@
    html:has() (0,1,1) outranks Webflow's :root (0,1,0). No match = Webflow default.
    :has() — Safari 15.4+, older browsers keep the default.
    Known: below 991px Webflow re-declares these variables on body, which shadows <html> — mobile TBD */
-html:has([data-barba-namespace="home"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
-html:has([data-barba-namespace="privacy"]) { --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white); }
-html:has([data-barba-namespace="contacts"]) { --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black); }
-html:has([data-barba-namespace="cases"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
-html:has([data-barba-namespace="company"]) { --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white); }
-html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black); }
+html:has([data-barba-namespace="home"]) {
+    --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
+    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
+}
+html:has([data-barba-namespace="privacy"]) {
+    --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
+    --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
+}
+html:has([data-barba-namespace="contacts"]) {
+    --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black);
+    --floating-cta--header-color: var(--main-colours--orange); --floating-cta--small-header-color: var(--main-colours--black);
+}
+html:has([data-barba-namespace="cases"]) {
+    --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
+    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
+}
+html:has([data-barba-namespace="company"]) {
+    --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
+    --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
+}
+html:has([data-barba-namespace="case-study"]) {
+    --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
+    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
+}
+
+/* Floating CTA colors — its own pair, so it doesn't flip when the header crosses a section (the
+   header is at the top, the button at the bottom: they cross sections at different times).
+   Inside the floating button the header variables are re-pointed at the pair, so the shared
+   call-to-action component stays as is in Webflow (the menu's copy keeps following the header).
+   The color-zone modules switch the pair at the button's own line (colorZoneTargets.js).
+   The morph stand-in (FooterCtaMorph.js, on <body>) carries copies of the CTA's content, so it
+   gets the same re-pointing — otherwise its copies would take the header's colors.
+   No page match = Webflow's header defaults */
+.floating-button-wrapper,
+.footer-cta-morph {
+    --main-colours--header-color: var(--floating-cta--header-color, var(--main-colours--white));
+    --main-colours--small-header-color: var(--floating-cta--small-header-color, #040101);
+}
+
+/* Footer Zone Color — orange over the footer on every page (FooterHeaderColor.js toggles the class
+   per target). !important beats the per-page :has() rules and the zone modules' inline pairs */
+html.is-footer-under-header {
+    --main-colours--header-color: var(--main-colours--orange) !important;
+    --main-colours--small-header-color: var(--main-colours--black) !important;
+}
+html.is-footer-under-floating-cta {
+    --floating-cta--header-color: var(--main-colours--orange) !important;
+    --floating-cta--small-header-color: var(--main-colours--black) !important;
+}
+
+/* Footer Interactive Image — company page only. Hidden everywhere else; FooterLight.js skips
+   itself when the image isn't rendered, so this rule alone decides where it runs.
+   :has() — Safari 15.4+; older browsers show the image without the light effect */
+html:not(:has([data-barba-namespace="company"])) .footer-interactive-image { display: none; }
+/* Footer Video — the other way round: everywhere except company */
+html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 
 /* Header Pill Fill — the compact pill is filled with header-color; HeaderCompact.js fades it
    by tweening --placer-fill 0 → 1, so the color itself always follows the variable (page
@@ -656,6 +754,14 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
 }
 
 
+/* Footer Edge Clip — at z-index -2 the footer is under body / main for clicks. FooterIntro.js lifts
+   it above the page and clips it at the page edge (inline clip-path), so it looks the same but
+   takes hover and clicks wherever it's uncovered. Without JS it stays at -2 */
+.footer-container.is-edge-clipped {
+    z-index: 1;
+}
+
+
 /* Footer Marquee — two identical tracks side by side, each slides one own width left;
    at the loop restart track 2 sits where track 1 started, so the reset is invisible.
    Needs no gap between the tracks (a gap would show as a jump). */
@@ -677,6 +783,38 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
 }
 @keyframes footer-marquee {
     to { transform: translateX(-59.6%); }
+}
+
+
+/* Footer CTA Morph — stand-in FooterCtaMorph.js flies from the floating CTA to the footer form
+   button. Static frame here; rect, radius, colors and content offsets come from the two real
+   buttons at runtime. Its copy of the footer track keeps marqueeing (same rule as the real one) */
+.footer-cta-morph {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000; /* above .floating-button-wrapper (999) */
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    will-change: transform;
+}
+/* While the stand-in has its place the real CTA is hidden: no hover fades, so a color-zone switch
+   while it's away doesn't still be fading when it comes back */
+.floating-button-wrapper.is-cta-handed-off .call-to-action {
+    transition: none;
+}
+.footer-cta-morph_layer {
+    position: absolute;
+    top: 50%;
+    display: flex;
+    white-space: nowrap;
+}
+.footer-cta-morph .footer-marquee_track {
+    --footer-marquee-duration: 12s;
+    flex-shrink: 0;
+    will-change: transform;
+    animation: footer-marquee var(--footer-marquee-duration) linear infinite;
 }
 
 
@@ -725,7 +863,8 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
     .arrow-scroll-track,
     .floating-button-wrapper .floating-button-sign,
     .call-to-action-svg,
-    .footer_form-marquee-btn .footer-marquee_track {
+    .footer_form-marquee-btn .footer-marquee_track,
+    .footer-cta-morph .footer-marquee_track {
         animation: none;
     }
 }
@@ -818,6 +957,96 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
 }
 
 
+/* Bento Flip Clock — BentoStats.js builds this inside each .bento_digit-card (Webflow: size,
+   radius, card color). Halves are 50% each; every half holds a full-card-size face, so a digit
+   placed in % of the card lines up across both halves. Flaps rotate on the split line */
+.bento-flip,
+.bento-flip__flaps {
+    position: absolute;
+    inset: 0;
+    color: #040101;
+}
+.bento-flip__flaps {
+    perspective: 48.6vw; /* handoff: 700px on a 1440 canvas */
+}
+.bento-flip__half {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+.bento-flip__half.is-top {
+    top: 0;
+    border-radius: 0.833vw 0.833vw 0 0;
+    background: linear-gradient(180deg, #fffdf6 0%, #fffbf2 100%);
+}
+.bento-flip__half.is-bottom {
+    top: 50%;
+    border-radius: 0 0 0.833vw 0.833vw;
+    background: linear-gradient(180deg, #fef8ec 0%, #fffaf1 100%);
+}
+.bento-flip__half.is-flap {
+    z-index: 4;
+    visibility: hidden;
+    background: #fffbf2;
+    box-shadow: 0 0.97vw 1.53vw rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+    will-change: transform;
+}
+.bento-flip__half.is-flap.is-top {
+    transform-origin: 50% 100%;
+}
+.bento-flip__half.is-flap.is-bottom {
+    transform-origin: 50% 0%;
+}
+.bento-flip__face {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 200%;
+}
+.bento-flip__half.is-bottom .bento-flip__face {
+    top: -100%;
+}
+.bento-flip__digit {
+    position: absolute;
+    display: block;
+    user-select: none;
+}
+
+/* Split line across all three cards (handoff: 2px, #9fc8ca, 6px in from the card's left) */
+.bento_value-wrapper.is-flip-clock::after {
+    content: '';
+    position: absolute;
+    z-index: 10;
+    left: 0.417vw;
+    right: 0;
+    top: calc(3.993vw - 0.069vw); /* half a digit card (7.986vw) minus half the line */
+    height: 0.139vw;
+    background-color: #9fc8ca;
+    pointer-events: none;
+}
+
+/* Bento Controls — active dot filled, back arrow hidden on the first state */
+.bento_slider-controls .stages_dot-full {
+    transition: opacity 0.3s ease;
+}
+.bento_slider-controls .stages_dot:not(.is-active) .stages_dot-full {
+    opacity: 0;
+}
+.bento_slider-back {
+    transition: opacity 0.22s ease;
+}
+.bento_slider-back.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+
 /* Stages — words after split stay inside their 28vw parent */
 .stages_word {
     max-width: 100%;
@@ -826,26 +1055,29 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
 }
 
 
-/* Cases Page — active row fill (enters animated, leaves instantly), arrow, sidebar preview */
+/* Cases Page — active row fill (CaseRowFill.js wipes it with clip-path, behind the content),
+   arrow, sidebar preview. Text / logo / arrow follow .is-active on the fill's timing:
+   0.5s power3.out (cubic-bezier below) */
 .case-row {
+    --case-row-duration: 0.5s;
+    --case-row-ease: cubic-bezier(0.215, 0.61, 0.355, 1); /* power3.out */
     position: relative;
     background-color: transparent;
     overflow: hidden;
-    transition: color 0.3s ease;
+    transition: color var(--case-row-duration) var(--case-row-ease);
 }
 
-.case-row::before {
-    content: "";
+.case-row__fill {
     position: absolute;
     inset: 0;
-    background: #FF6038;
-    transform: scaleY(0);
-    transform-origin: center top;
     z-index: 0;
+    background-color: var(--main-colours--orange);
+    clip-path: inset(0% 0% 100% 0%);
     pointer-events: none;
+    will-change: clip-path;
 }
 
-.case-row>* {
+.case-row > :not(.case-row__fill) {
     position: relative;
     z-index: 1;
 }
@@ -854,13 +1086,8 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
     color: #000000;
 }
 
-.case-row.is-active::before {
-    transform: scaleY(1);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 .case-row_logo {
-    transition: filter 0.3s ease;
+    transition: filter var(--case-row-duration) var(--case-row-ease);
 }
 
 .case-row.is-active .case-row_logo {
@@ -872,11 +1099,42 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
     display: block !important;
     width: 0vw;
     overflow: hidden;
-    transition: width 0.3s ease;
+    transition: width var(--case-row-duration) var(--case-row-ease);
 }
 
 .case-row.is-active .case-row_arrow {
     width: 1vw;
+}
+
+/* Cases Sort Tabs — SortTabIndicator.js puts a black pill behind the active tab and slides it;
+   the active tab's white text is the Webflow combo (.is-active), crossfaded here. Inactive tabs
+   get a light gray pill on hover */
+.filter-tabs {
+    --sort-tab-duration: 0.4s;
+    --sort-tab-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+    --sort-tab-hover-background: rgba(0, 0, 0, 0.08);
+    position: relative;
+}
+.filter-tabs_indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-radius: 5vw; /* same as .filter-tabs_btn */
+    background-color: var(--main-colours--black);
+    pointer-events: none;
+    will-change: transform, width;
+}
+.filter-tabs_btn {
+    position: relative;
+    z-index: 1;
+    transition: color var(--sort-tab-duration) var(--sort-tab-ease),
+        background-color var(--sort-tab-duration) var(--sort-tab-ease);
+}
+@media (hover: hover) {
+    .filter-tabs_btn:not(.is-active):hover {
+        background-color: var(--sort-tab-hover-background);
+    }
 }
 
 /* Sidebar preview reveals bottom-up through clip-path */
@@ -894,8 +1152,8 @@ html:has([data-barba-namespace="case-study"]) { --main-colours--header-color: va
     object-fit: cover;
     pointer-events: none;
     z-index: 1;
-    clip-path: inset(100% 0 0 0);
-    -webkit-clip-path: inset(100% 0 0 0);
+    clip-path: inset(0 0 100% 0);
+    -webkit-clip-path: inset(0 0 100% 0);
     will-change: clip-path;
 }
 
@@ -961,6 +1219,7 @@ html {
 /* Draggable gallery */
 .casepage_gallery-track {
     -webkit-user-select: none;
+    user-select: none;
     touch-action: pan-y;
 }
 

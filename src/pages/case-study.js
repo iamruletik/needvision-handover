@@ -5,7 +5,6 @@ import { Module } from '../core/Module'
 export class CaseStudyPage extends Module {
 
     setup() {
-        console.log('[page] CASE STUDY')
 
         this.children = [].map((child) => child.mount())
     }
@@ -19,6 +18,5 @@ export class CaseStudyPage extends Module {
         this.children?.forEach((child) => child.destroy())
         this.children = []
         super.destroy()
-        console.log('[page] CASE STUDY destroyed')
     }
 }

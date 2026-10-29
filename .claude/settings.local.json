@@ -3,7 +3,9 @@
     "allow": [
       "Bash(curl -sL https://cdn.prod.website-files.com/6a21bfb49168ff7f1c3e9612/css/need-vision-test.webflow.shared.dfec4b44a.css)",
       "Bash(awk '/\\\\.preloader \\\\{/,/\\\\}/')",
-      "Bash(awk '/\\\\.preloader_icon \\\\{/,/\\\\}/')"
+      "Bash(awk '/\\\\.preloader_icon \\\\{/,/\\\\}/')",
+      "mcp__claude_ai_Webflow__data_assets_tool",
+      "mcp__claude_ai_Webflow__data_element_builder"
     ]
   }
 }

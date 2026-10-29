@@ -1,10 +1,15 @@
+import barba from '@barba/core'
 import { gsap, Observer } from '../core/gsap'
 import { Module } from '../core/Module'
+import { EyeIdle } from './EyeIdle'
+import { SplitBlurReveal } from './SplitBlurReveal'
+import { CasesIntro } from './CasesIntro'
 
 //Cases carousel on the home page. The line of cards (.case_cards-line) moves,
-//the single tag above it (.case_tag-text) stays and fade-swaps its text from the
-//active card's hidden .case_tag-text-base. Drag on the overlay zone steps one
-//slide per gesture; dots, card clicks and a custom cursor over the click zone.
+//the single tag above it (.case_tag-text) stays and swaps its text from the active card's
+//hidden .case_tag-text-base — lines leave upward, the new ones rise in (SplitBlurReveal).
+//Drag on the overlay zone steps one slide per gesture; dots, card clicks and a custom
+//cursor over the click zone. The section's scroll-in intro lives in CasesIntro.
 
 //Step = card content width (24vw) + line gap (1vw)
 const SLIDE_STEP_VW = 25
@@ -13,9 +18,15 @@ const CONTENT_DURATION = 0.4
 const HOVER_DURATION = 0.4
 const BACKGROUND_DURATION = 0.8
 const DOT_DURATION = 0.4
-const TAG_FADE_DURATION = 0.35
 const DRAG_MINIMUM = 10
 const DRAG_TOLERANCE = 20
+
+//Eye Cursor — snaps to the pointer on enter (no glide from where it left) and pops in
+const CURSOR_POP_FROM_SCALE = 0.3
+const CURSOR_POP_DURATION = 0.45
+const CURSOR_POP_EASE = 'back.out(2.2)'
+const CURSOR_HIDE_DURATION = 0.2
+const CURSOR_HIDE_EASE = 'power2.in'
 
 const IDLE_BORDER = '#ffffff'
 const HOVER_BORDER = 'rgba(255,255,255,0)'
@@ -39,6 +50,10 @@ export class CasesSlider extends Module {
         //The tag OUTSIDE the moving line — cards carry hidden .case_tag-text-base sources
         this.tagText = document.querySelector('.case_card-wrapper > .case_tag-text')
             || document.querySelector('.case_tag-text')
+        this.tagReveal = this.tagText ? new SplitBlurReveal(this.tagText, { trigger: 'manual' }).mount() : null
+        this.tagTargetText = null
+        this.tagSwapId = 0
+        this.intro = new CasesIntro(this.slides, this.tagReveal).mount()
 
         gsap.set(this.backgroundImages, { opacity: 0 })
 
@@ -50,6 +65,11 @@ export class CasesSlider extends Module {
         }
 
         this.update(0)
+    }
+
+    //Called once the screen is visible
+    reveal() {
+        this.intro?.reveal()
     }
 
     //Webflow usually has a static dot count — remove extras, clone missing from the first
@@ -88,24 +108,80 @@ export class CasesSlider extends Module {
             pointer-events: none !important;
             z-index: 9999 !important;
             opacity: 0 !important;
-            transform: translate(-50%, -50%) !important;
             transition: opacity 0.2s ease !important;
         `
+        //Centred by GSAP, not a CSS transform — so the pop / press can scale the icon itself
+        gsap.set(cursorIcon, { xPercent: -50, yPercent: -50 })
 
         const moveX = gsap.quickTo(cursorIcon, 'left', { duration: 0.25, ease: 'power3.out' })
         const moveY = gsap.quickTo(cursorIcon, 'top', { duration: 0.25, ease: 'power3.out' })
 
-        this.listen(clickZone, 'mouseenter', () => { cursorIcon.style.opacity = '1' })
-        this.listen(clickZone, 'mouseleave', () => { cursorIcon.style.opacity = '0' })
+        //Eye icon: retina follows the mouse, blinks now and then while showing.
+        //Pop / press scale the whole icon (its centring xPercent / yPercent is kept)
+        let popTarget = cursorIcon
+        this.eyeIdle = new EyeIdle(cursorIcon, popTarget)
+        if (popTarget) gsap.set(popTarget, { scale: CURSOR_POP_FROM_SCALE })
+
+        //Second arg to a quickTo = start value: jumps there instead of gliding from the last spot
+        this.listen(clickZone, 'mouseenter', (event) => {
+            moveX(event.clientX, event.clientX)
+            moveY(event.clientY, event.clientY)
+            cursorIcon.style.opacity = '1'
+            if (popTarget) {
+                this.cursorPopTween?.kill()
+                this.cursorPopTween = gsap.fromTo(popTarget,
+                    { scale: CURSOR_POP_FROM_SCALE },
+                    { scale: 1, duration: CURSOR_POP_DURATION, ease: CURSOR_POP_EASE, overwrite: 'auto' }
+                )
+            }
+            this.eyeIdle.follow(event.clientX, event.clientY)
+            this.eyeIdle.start()
+        })
+        this.listen(clickZone, 'mouseleave', () => {
+            cursorIcon.style.opacity = '0'
+            if (popTarget) {
+                this.cursorPopTween?.kill()
+                this.cursorPopTween = gsap.to(popTarget, {
+                    scale: CURSOR_POP_FROM_SCALE,
+                    duration: CURSOR_HIDE_DURATION,
+                    ease: CURSOR_HIDE_EASE,
+                    overwrite: 'auto',
+                })
+            }
+            this.eyeIdle.stop()
+        })
         this.listen(clickZone, 'mousemove', (event) => {
             moveX(event.clientX)
             moveY(event.clientY)
+            this.eyeIdle.follow(event.clientX, event.clientY)
         })
-        this.listen(clickZone, 'click', () => {
+        //Blink first, then go — a second click while blinking is ignored.
+        //Target: a link inside the active card, else the card's data-href (Webflow attribute)
+        this.listen(clickZone, 'click', async () => {
+            if (this.isNavigating) return
             let activeSlide = this.slides[this.activeIndex]
             let link = activeSlide?.querySelector('a')?.getAttribute('href') || activeSlide?.getAttribute('data-href')
-            if (link) window.location.href = link
+            if (!link) {
+                console.warn('CasesSlider: active case card has no link or data-href', activeSlide)
+                return
+            }
+            this.isNavigating = true
+            await this.eyeIdle.blink()
+            this.navigate(link)
         })
+    }
+
+    //Through Barba — eye transition, page modules swapped like any link. Full load if it can't
+    navigate(link) {
+        let fallback = (error) => {
+            console.warn('CasesSlider: barba.go failed, loading the page normally', error)
+            window.location.href = link
+        }
+        try {
+            Promise.resolve(barba.go(link)).catch(fallback)
+        } catch (error) {
+            fallback(error)
+        }
     }
 
     //Drag — one step per gesture. Observer fires onLeft/onRight every TOLERANCE px,
@@ -228,7 +304,7 @@ export class CasesSlider extends Module {
             overwrite: 'auto',
         }))
 
-        if (this.fractionText) this.fractionText.textContent = `${index + 1}/${this.totalSlides}`
+        if (this.fractionText) this.fractionText.textContent = `${index + 1} / ${this.totalSlides}`
 
         this.dots.forEach((dot, dotIndex) => {
             let fullDot = dot.querySelector('.cases_slider-dot-full')
@@ -275,27 +351,39 @@ export class CasesSlider extends Module {
         this.swapTagText(index)
     }
 
-    swapTagText(index) {
-        if (!this.tagText) return
+    //Before the intro has played the text is just set, parked hidden for the intro to bring in.
+    //After: out, swap, in. A newer swap cuts an older one off — the newest text always wins
+    async swapTagText(index) {
+        if (!this.tagReveal) return
 
         let base = this.slides[index]?.querySelector('.case_tag-text-base')
         let newText = (base?.textContent || '').trim()
-        if (!newText || newText === this.tagText.textContent.trim()) return
+        if (!newText || newText === this.tagTargetText) return
+        this.tagTargetText = newText
 
-        this.animate(gsap.to(this.tagText, {
-            opacity: 0,
-            duration: TAG_FADE_DURATION,
-            ease: 'power2.in',
-            overwrite: 'auto',
-            onComplete: () => {
-                this.tagText.textContent = newText
-                gsap.to(this.tagText, {
-                    opacity: 1,
-                    duration: TAG_FADE_DURATION + 0.04,
-                    ease: 'power2.out',
-                    overwrite: 'auto',
-                })
-            },
-        }))
+        if (!this.intro?.hasPlayed) {
+            this.tagReveal.setText(newText)
+            return
+        }
+
+        let swapId = ++this.tagSwapId
+        await this.tagReveal.playOut()
+        if (swapId !== this.tagSwapId || !this.tagReveal) return
+        this.tagReveal.setText(newText)
+        this.tagReveal.playIn()
+    }
+
+    //Cleanup — the eye's own timers live outside this module's tracking
+
+    destroy() {
+        this.cursorPopTween?.kill()
+        this.cursorPopTween = null
+        this.eyeIdle?.destroy()
+        this.eyeIdle = null
+        this.intro?.destroy()
+        this.intro = null
+        this.tagReveal?.destroy()
+        this.tagReveal = null
+        super.destroy()
     }
 }

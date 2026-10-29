@@ -18,7 +18,13 @@ import { setupSceneLights } from '../setup-scene-lights';
 import { applyParticleRoadGuiFromSearchParams } from '../world-tweak-url';
 
 // Load milestones in the console — ms since this bootstrap started (worker or main thread)
+const IS_LOAD_LOG_ENABLED = false;
+
 function logLoadStage(bootStart: number, stage: string) {
+    if (!IS_LOAD_LOG_ENABLED) {
+        return;
+    }
+
     // eslint-disable-next-line no-console
     console.info(`[scene] ${stage} — ${Math.round(performance.now() - bootStart)}ms`);
 }

@@ -13,8 +13,8 @@ canvas.init();
 // when navigating away from and back to the home page.
 (window as any).needvisionScene = canvas;
 
-const logo = document.querySelector<HTMLElement>('.js-header-logo');
-
-if (logo) {
-    setupHeaderLogoRectObserver(logo);
-}
+// Spotlight sits on the dot in the header logo (Webflow embed: <path id="theDot"> inside
+// #header-logo-actual); the whole logo is the fallback if the dot ever goes missing
+setupHeaderLogoRectObserver(
+    () => document.getElementById('theDot') ?? document.getElementById('header-logo-actual'),
+);

@@ -2,6 +2,7 @@ import { gsap, ScrollTrigger, Flip } from '../core/gsap'
 import { Module } from '../core/Module'
 import { ProfitCounter } from './ProfitCounter'
 import { MenuReveal } from './MenuReveal'
+import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 
 //Header compacts on scroll. Persistent — the header lives outside the Barba container,
 //so main.js creates this once (Barba's scroll reset to 0 un-compacts it on every page).
@@ -25,6 +26,8 @@ import { MenuReveal } from './MenuReveal'
 //       padding, main.css) to make up the height the big logo stops reserving, and
 //       .descriptor-svg rides the same Flip so it glides instead of jumping
 //Back at the top everything returns to its original parent / position.
+//Over the footer (FooterHeaderColor's FOOTER_ZONE_EVENT) the header spreads too, and compacts
+//again scrolling back above it.
 //#header-menu-link toggles the menu (MenuReveal): opening compacts the header first if it's
 //spread and the menu drops once the pill has landed; scroll is locked out (isMenuLocked).
 //Closing reverses the menu, then spreads the header back at the top of the page, or keeps
@@ -147,6 +150,8 @@ export class HeaderCompact extends Module {
         this.isMenuOpen = false
         this.isMenuLocked = false
         this.isPinnedCompact = false
+        this.isOverFooter = false
+        this.isIntroHeld = false //HeaderReveal: pill fill + counter stay hidden until the first reveal
         this.animationLock = null
         this.menuReveal = new MenuReveal().mount()
 
@@ -161,6 +166,7 @@ export class HeaderCompact extends Module {
         this.listen(this.menuLink, 'click', (event) => this.onMenuClick(event))
         this.listen(this.menuLink, 'mouseenter', () => this.bounceMenuIcon(true))
         this.listen(this.menuLink, 'mouseleave', () => this.bounceMenuIcon(false))
+        this.listen(document, FOOTER_ZONE_EVENT, (event) => this.setOverFooter(Boolean(event.detail?.isOverFooter)))
 
         //Viewport changes move the pill — keep the menu content level with it while open
         this.listen(window, 'resize', () => {
@@ -172,7 +178,15 @@ export class HeaderCompact extends Module {
 
     onScrollThreshold(isPastThreshold) {
         if (this.isMenuLocked || this.isPinnedCompact) return
-        this.setCompact(isPastThreshold)
+        this.setCompact(isPastThreshold && !this.isOverFooter)
+    }
+
+    //Menu open: it stays compact, releaseMenuLock() picks the footer state up on close
+    setOverFooter(isOverFooter) {
+        if (isOverFooter === this.isOverFooter) return
+        this.isOverFooter = isOverFooter
+        if (!this.homes || this.isMenuLocked || this.isPinnedCompact) return
+        this.setCompact(this.shouldBeCompact())
     }
 
     //Called by main.js on first load and every Barba page change (screen covered by then).
@@ -187,9 +201,43 @@ export class HeaderCompact extends Module {
         else if (wasPinned) this.setCompact(this.shouldBeCompact(), { instant: true })
     }
 
+    //First load (HeaderReveal): the header may compact under the preloader, but the pill fill
+    //and counter letters stay hidden until releaseIntro() brings them in with the reveal
+    holdIntro() {
+        this.isIntroHeld = true
+    }
+
+    //delay — seconds into the header reveal. Spread: nothing to do, the extras are hidden anyway
+    releaseIntro(delay = 0) {
+        if (!this.isIntroHeld) return
+        this.isIntroHeld = false
+        if (!this.homes || !this.isCompact) return
+
+        this.placerFillTween?.kill()
+        this.placerFillTween = this.animate(gsap.fromTo(this.linksPlacer,
+            { [PLACER_FILL_PROPERTY]: PLACER_FILL_HIDDEN },
+            //overwrite — a compact still running under the preloader keeps its left/right, loses its fill
+            { [PLACER_FILL_PROPERTY]: PLACER_FILL_VISIBLE, duration: LINKS_DURATION, delay, ease: LINKS_EASE, overwrite: 'auto' }
+        ))
+
+        if (this.profitCounter?.units?.length) {
+            this.counterTween?.kill()
+            this.counterTween = this.animate(gsap.fromTo(this.profitCounter.units,
+                { yPercent: COUNTER_OFFSET_PERCENT },
+                {
+                    yPercent: 0,
+                    duration: COUNTER_ENTER_DURATION,
+                    stagger: COUNTER_ENTER_STAGGER,
+                    delay: delay + COUNTER_ENTER_DELAY,
+                    ease: COUNTER_ENTER_EASE,
+                }
+            ))
+        }
+    }
+
     //Where the header rests when nothing else holds it
     shouldBeCompact() {
-        return this.isPinnedCompact || Boolean(this.scrollTrigger?.isActive)
+        return this.isPinnedCompact || (Boolean(this.scrollTrigger?.isActive) && !this.isOverFooter)
     }
 
     //Toggle. Opening: compact first if the header is spread, menu drops after the pill.
@@ -358,6 +406,9 @@ export class HeaderCompact extends Module {
         let placerStartEdges = this.placerEdgesFromCurrent()
         this.logoFlip?.kill()
         this.placerTween?.kill()
+        this.placerFillTween?.kill()
+        //Held for the first reveal — the pill moves but stays unfilled, counter stays down
+        let showsExtras = isCompact && !this.isIntroHeld
 
         //Links ride the pill: inside it they sit at its padded edges (space-between), so
         //animating the pill's left/right carries them — no separate links animation.
@@ -405,7 +456,7 @@ export class HeaderCompact extends Module {
             {
                 left: placerEdges.to.left,
                 right: placerEdges.to.right,
-                [PLACER_FILL_PROPERTY]: isCompact ? PLACER_FILL_VISIBLE : PLACER_FILL_HIDDEN,
+                [PLACER_FILL_PROPERTY]: showsExtras ? PLACER_FILL_VISIBLE : PLACER_FILL_HIDDEN,
                 duration: LINKS_DURATION,
                 ease: LINKS_EASE,
                 //Spreading done — links go home now. Edges back to CSS either way,
@@ -420,7 +471,7 @@ export class HeaderCompact extends Module {
         //Counter letters rise out of the mask once the pill is coming in, drop back out on exit
         if (this.profitCounter?.units?.length) {
             this.counterTween?.kill()
-            this.counterTween = this.animate(gsap.to(this.profitCounter.units, isCompact
+            this.counterTween = this.animate(gsap.to(this.profitCounter.units, showsExtras
                 ? {
                     yPercent: 0,
                     duration: COUNTER_ENTER_DURATION,

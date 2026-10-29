@@ -25,8 +25,10 @@ export const SCROLL_WEBGL_COMPLETE_EPS = 1e-5;
 export const SCROLL_SPOT_RAMP_START = 0.3;
 export const SCROLL_SPOT_RAMP_END = 0.6;
 
-export const HEADER_LOGO_SPOT_SCREEN_ANCHOR_X = 0.456;
-export const HEADER_LOGO_SPOT_SCREEN_ANCHOR_Y = 0.8;
+// Point inside the anchor element's rect (0..1) the spotlight sits on — centre of #theDot.
+// Was 0.456 / 0.8: the dot's spot inside the old whole-logo image
+export const HEADER_LOGO_SPOT_SCREEN_ANCHOR_X = 0.5;
+export const HEADER_LOGO_SPOT_SCREEN_ANCHOR_Y = 0.5;
 
 export const SCROLL_CITY_RAYCAST_MAX = SCROLL_SPOT_RAMP_START;
 

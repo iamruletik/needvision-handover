@@ -7,10 +7,14 @@ import { ProxyWorld } from './ProxyWorld';
 import { registerWorldForHeaderLogo, unregisterWorldForHeaderLogo } from './header-logo-rect-bridge';
 import type { IWorld } from './types';
 
+// Fired on document by the host site when its page becomes visible (see #startRevealWhenSiteVisible)
+const SITE_REVEALED_EVENT = 'site-revealed';
+
 class Experience {
     canvasParent: HTMLElement | null;
     world?: IWorld;
     private scrollCleanup?: () => void;
+    private revealWaitCleanup?: () => void;
 
     private targetScrollProgress = 0;
 
@@ -46,7 +50,7 @@ class Experience {
             isDebug,
             () => {
                 document.dispatchEvent(new Event('experience-ready'));
-                this.#startRevealAnimation();
+                this.#startRevealWhenSiteVisible();
             },
         );
         registerWorldForHeaderLogo(this.world);
@@ -68,6 +72,28 @@ class Experience {
     #onScrollFromMotion = (progress: number, _info: unknown) => {
         this.targetScrollProgress = progress;
     };
+
+    // The host site (needvision bundle) keeps html[data-site-revealed] = "false" while its
+    // preloader / page transition covers the screen, flips it to "true" and fires
+    // 'site-revealed' when the page shows — the fade-in waits for that so it's never
+    // half-played under the preloader. No flag at all (standalone): start right away.
+    #startRevealWhenSiteVisible() {
+        const siteRevealed = document.documentElement.dataset.siteRevealed;
+
+        if (siteRevealed === undefined || siteRevealed === 'true') {
+            this.#startRevealAnimation();
+
+            return;
+        }
+
+        const onSiteRevealed = () => {
+            this.revealWaitCleanup = undefined;
+            this.#startRevealAnimation();
+        };
+
+        document.addEventListener(SITE_REVEALED_EVENT, onSiteRevealed, { once: true });
+        this.revealWaitCleanup = () => document.removeEventListener(SITE_REVEALED_EVENT, onSiteRevealed);
+    }
 
     #startRevealAnimation() {
         if (this.revealAnimRafId !== 0) {
@@ -146,6 +172,8 @@ class Experience {
 
         this.scrollCleanup?.();
         this.scrollCleanup = undefined;
+        this.revealWaitCleanup?.();
+        this.revealWaitCleanup = undefined;
         this.debouncedOnWindowResize.cancel();
         window.removeEventListener('resize', this.debouncedOnWindowResize);
         document.removeEventListener('pointermove', this.onPointermove);

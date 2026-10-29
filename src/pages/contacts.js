@@ -23,12 +23,11 @@ const DIVIDER_STEP_TIMES = Array.from({ length: DIVIDER_STEP_COUNT }, (_, index)
 export class ContactsPage extends Module {
 
     setup() {
-        console.log('[page] CONTACTS')
 
         this.children = [
             new ContactsHeadline(),
             new DividerReveal({ pauseScale: 0.5, stepTimes: DIVIDER_STEP_TIMES }),
-            new FadeMoveReveal('.contacts-form', {
+            new FadeMoveReveal('.contacts-form-wrap', { //card + its .contacts-form-part image
                 waitForScroll: false,
                 offsetY: FORM_OFFSET_Y,
                 delay: FORM_DELAY,
@@ -72,6 +71,5 @@ export class ContactsPage extends Module {
         this.children?.forEach((child) => child.destroy())
         this.children = []
         super.destroy()
-        console.log('[page] CONTACTS destroyed')
     }
 }
