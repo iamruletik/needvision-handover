@@ -40,9 +40,17 @@ export class SceneLoader extends Module {
         let styleLink = document.createElement('link')
         styleLink.rel = 'stylesheet'
         styleLink.href = SCENE_STYLE_URL
+
+        //The scene reads the canvas size once at boot — before app.css applies it's the 300x150
+        //default and the renderer stays low-res. Bundle waits for the styles (or their failure)
+        let stylesReady = new Promise((resolve) => {
+            styleLink.addEventListener('load', resolve, { once: true })
+            styleLink.addEventListener('error', resolve, { once: true })
+        })
         document.head.appendChild(styleLink)
 
-        import(/* @vite-ignore */ SCENE_SCRIPT_URL)
+        stylesReady
+            .then(() => import(/* @vite-ignore */ SCENE_SCRIPT_URL))
             .catch((error) => {
                 console.warn('SceneLoader: scene bundle failed to load', error)
             })
