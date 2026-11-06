@@ -25,6 +25,7 @@ export class ProxyWorld implements IWorld {
     // private workerStats?: Stats; // DEBUG TOOLS DISABLED
     // private workerStatsRaf = 0;
     private logoRectBuffer?: HeaderLogoRect | null;
+    private isParked = false;
 
     constructor(
         params: ProxyWorldInitParams,
@@ -175,6 +176,11 @@ export class ProxyWorld implements IWorld {
             return;
         }
 
+        // Main-thread world created late (async import) — catch up on a park sent before it existed
+        if (this.isParked) {
+            this.world.setParked(true);
+        }
+
         if (this.logoRectBuffer === undefined) {
             return;
         }
@@ -262,6 +268,16 @@ export class ProxyWorld implements IWorld {
             this.world.setHeaderLogoRect(rect);
         } else {
             this.logoRectBuffer = rect;
+        }
+    }
+
+    setParked(parked: boolean) {
+        this.isParked = parked;
+
+        if (this.worker) {
+            this.worker.postMessage({ message: 'setParked', payload: parked });
+        } else {
+            this.world?.setParked(parked);
         }
     }
 

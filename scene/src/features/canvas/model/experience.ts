@@ -24,6 +24,12 @@ class Experience {
     prevTime = 0;
     isHoverMq = matchMedia('(any-hover: hover), (hover: hover) and (pointer: fine)');
 
+    // First frame is live ('experience-ready' fired) — a parked scene stays ready
+    isReady = false;
+    // Host page left home: the world keeps everything built but renders nothing, and this
+    // drops every page hook until resume() binds it to the next page's canvas
+    private isParked = false;
+
     constructor(canvas: HTMLCanvasElement) {
         this.onPointermove = this.onPointermove.bind(this);
         this.onPointerdown = this.onPointerdown.bind(this);
@@ -49,11 +55,22 @@ class Experience {
             },
             isDebug,
             () => {
+                this.isReady = true;
                 document.dispatchEvent(new Event('experience-ready'));
-                this.#startRevealWhenSiteVisible();
+
+                // Parked before it got ready — resume() starts the reveal instead
+                if (!this.isParked) {
+                    this.#startRevealWhenSiteVisible();
+                }
             },
         );
-        registerWorldForHeaderLogo(this.world);
+        this.#bindToPage(canvas);
+    }
+
+    // Everything tied to the host page: scroll section, pointer, resize, header logo, scroll loop
+    #bindToPage(canvas: HTMLCanvasElement) {
+        this.canvasParent = canvas.parentElement;
+        registerWorldForHeaderLogo(this.world as IWorld);
 
         const scrollSection = canvas.closest('.js-canvas-container');
 
@@ -63,6 +80,59 @@ class Experience {
 
         this.#initEvents();
         this.rafId = requestAnimationFrame(this.#scrollLoop);
+    }
+
+    // Safe to call twice — park() then dispose()
+    #unbindFromPage() {
+        if (this.rafId !== 0) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = 0;
+        }
+
+        if (this.revealAnimRafId !== 0) {
+            cancelAnimationFrame(this.revealAnimRafId);
+            this.revealAnimRafId = 0;
+        }
+
+        this.scrollCleanup?.();
+        this.scrollCleanup = undefined;
+        this.revealWaitCleanup?.();
+        this.revealWaitCleanup = undefined;
+        this.debouncedOnWindowResize.cancel();
+        window.removeEventListener('resize', this.debouncedOnWindowResize);
+        document.removeEventListener('pointermove', this.onPointermove);
+        document.removeEventListener('pointerdown', this.onPointerdown);
+        unregisterWorldForHeaderLogo();
+    }
+
+    // The <canvas> element is detached by the caller — the worker keeps control of it
+    park() {
+        if (this.isParked) {
+            return;
+        }
+
+        this.isParked = true;
+        this.#unbindFromPage();
+        // Back to the unrevealed pose, so the return replays the reveal like a fresh boot did
+        this.world?.revealExperience({ reveal: 0, cameraReveal: 0 });
+        this.world?.setParked(true);
+    }
+
+    // canvas — the same (parked) element, already placed in the new page's wrapper
+    resume(canvas: HTMLCanvasElement) {
+        if (!this.isParked) {
+            return;
+        }
+
+        this.isParked = false;
+        this.targetScrollProgress = 0;
+        this.#bindToPage(canvas);
+        this.onWindowResize();
+        this.world?.setParked(false);
+
+        if (this.isReady) {
+            this.#startRevealWhenSiteVisible();
+        }
     }
 
     get dpr() {
@@ -160,25 +230,7 @@ class Experience {
     }
 
     dispose() {
-        if (this.rafId !== 0) {
-            cancelAnimationFrame(this.rafId);
-            this.rafId = 0;
-        }
-
-        if (this.revealAnimRafId !== 0) {
-            cancelAnimationFrame(this.revealAnimRafId);
-            this.revealAnimRafId = 0;
-        }
-
-        this.scrollCleanup?.();
-        this.scrollCleanup = undefined;
-        this.revealWaitCleanup?.();
-        this.revealWaitCleanup = undefined;
-        this.debouncedOnWindowResize.cancel();
-        window.removeEventListener('resize', this.debouncedOnWindowResize);
-        document.removeEventListener('pointermove', this.onPointermove);
-        document.removeEventListener('pointerdown', this.onPointerdown);
-        unregisterWorldForHeaderLogo();
+        this.#unbindFromPage();
         this.world?.dispose();
     }
 }

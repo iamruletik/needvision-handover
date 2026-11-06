@@ -3,6 +3,14 @@
 //Promises resolve on animationend, so Barba can await close(), swap the page under
 //a black screen, then await open(). Reduced motion snaps states instantly.
 //Timings and easings live in main.css as --transition-* custom properties.
+//Loading label: once shut, if the swap underneath (next page fetch, 3D scene) takes longer than
+//LOADING_LABEL_DELAY_MS, "LOADING" blurs in at the center; it plays out before the eye opens.
+//Type comes from Webflow's .header-content-place (on the label itself), placement from main.css.
+
+import { SplitBlurReveal } from '../modules/SplitBlurReveal'
+
+const LOADING_LABEL_DELAY_MS = 300
+const LOADING_LABEL_TEXT = 'LOADING'
 
 const OVERLAY_MARKUP = `
 <div class="eye-transition is-idle" data-eye-transition aria-hidden="true">
@@ -17,8 +25,9 @@ const OVERLAY_MARKUP = `
                 </g>
             </mask>
         </defs>
-        <rect width="1366" height="768" fill="#000" mask="url(#eye-transition-mask)"></rect>
+        <rect width="1366" height="768" fill="#110F0E" mask="url(#eye-transition-mask)"></rect>
     </svg>
+    <div class="eye-transition__loading header-content-place" data-eye-loading>${LOADING_LABEL_TEXT}</div>
 </div>`
 
 const STATE_CLASSES = ['is-idle', 'is-closing', 'is-covered', 'is-opening']
@@ -32,6 +41,11 @@ export class EyeTransition {
         this.state = 'idle'
         this.pendingPhase = null
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+        this.loadingTimer = 0
+        this.isLoadingShown = false
+
+        let loadingLabel = this.root.querySelector('[data-eye-loading]')
+        this.loadingReveal = loadingLabel ? new SplitBlurReveal(loadingLabel, { trigger: 'manual' }).mount() : null
 
         this.root.addEventListener('animationend', (event) => this.onAnimationEnd(event))
     }
@@ -82,6 +96,29 @@ export class EyeTransition {
         let gap = typeof durationMs === 'number' ? durationMs : this.readGapMs()
         if (this.reducedMotion.matches || gap <= 0) return Promise.resolve()
         return new Promise((resolve) => setTimeout(resolve, gap))
+    }
+
+    //Loading Label
+
+    //Call once shut — the label shows only if hideLoading() hasn't come within the delay
+    showLoadingAfter(delayMs = LOADING_LABEL_DELAY_MS) {
+        if (!this.loadingReveal || this.state !== 'covered') return
+        clearTimeout(this.loadingTimer)
+        this.loadingTimer = setTimeout(() => {
+            this.isLoadingShown = true
+            if (this.reducedMotion.matches) this.loadingReveal.show()
+            else this.loadingReveal.playIn()
+        }, delayMs)
+    }
+
+    //Before open() — the label leaves first (mid-entry or shown), then resolves; instant if it never showed
+    async hideLoading() {
+        clearTimeout(this.loadingTimer)
+        this.loadingTimer = 0
+        if (!this.isLoadingShown) return
+        this.isLoadingShown = false
+        if (!this.reducedMotion.matches) await this.loadingReveal.playOut()
+        this.loadingReveal.reset() //back on the entry side for the next time
     }
 
     //Blink open — resolves when fully visible again

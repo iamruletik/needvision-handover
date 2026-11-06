@@ -2,6 +2,7 @@ import { gsap, ScrollTrigger, Flip } from '../core/gsap'
 import { Module } from '../core/Module'
 import { ProfitCounter } from './ProfitCounter'
 import { MenuReveal } from './MenuReveal'
+import { DescriptorReveal } from './DescriptorReveal'
 import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 
 //Header compacts on scroll. Persistent — the header lives outside the Barba container,
@@ -22,9 +23,14 @@ import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 //       (color fades via CSS transition). No Flip for the links — they ride the pill's
 //       left/right animation; on the way back they stay in the pill until it's done
 //  8-9. #header-logo-actual into .small-header-placer + .is-small (Webflow's small size);
-//       .header-content-logo-container-feature gets FEATURE_COMPACT_CLASS (+1.5rem top
-//       padding, main.css) to make up the height the big logo stops reserving, and
+//       .header-content-logo-container-feature gets FEATURE_COMPACT_CLASS (+2rem top
+//       padding, 2.5rem at 991 and down — main.css) to make up the height the big logo stops reserving, and
 //       .descriptor-svg rides the same Flip so it glides instead of jumping
+//  10.  side elements (.header-content-icon, .header-content-time) move up out of view —
+//       with the scroll / footer / pinned compact, not with a compact the menu forced at the top.
+//       The descriptor's lines sink back into their masks with them (DescriptorReveal, its intro
+//       reversed), except on pinned pages, where it stays shown.
+//       First load: the descriptor waits hidden for the header intro (holdIntro / releaseIntro)
 //Back at the top everything returns to its original parent / position.
 //Over the footer (FooterHeaderColor's FOOTER_ZONE_EVENT) the header spreads too, and compacts
 //again scrolling back above it.
@@ -33,6 +39,9 @@ import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 //Closing reverses the menu, then spreads the header back at the top of the page, or keeps
 //it compact when scrolled. Clicks while the pill moves are ignored; clicks while the menu
 //itself animates turn it around from wherever it is.
+//Vertical placement: above PINNED_COMPACT_MEDIA the pill's top is measured so the links keep their
+//exact height moving in / out (alignPlacerTop), and .header-counter-wrapper follows it. At and
+//below it the header never spreads — both keep Webflow's own placement.
 //Both states are real layouts — Flip only animates the difference, so they stay
 //responsive and can be tuned in Webflow without touching this file.
 
@@ -41,6 +50,10 @@ const COMPACT_SCROLL_PX = 80
 //Pages where the header is always compact — no spread state, no scroll switching; the menu
 //closes back to compact. Switched instantly on arrival (main.js → setNamespace())
 const PINNED_COMPACT_NAMESPACES = ['cases', 'contacts']
+//Pages that compact on scroll as usual, but keep the descriptor shown while compact
+const DESCRIPTOR_KEPT_NAMESPACES = ['404']
+//...and every page at this width — crossing it switches instantly too
+const PINNED_COMPACT_MEDIA = '(max-width: 991px)'
 
 //Fired on document when the menu opens / closes — anything in the menu can react
 export const MENU_OPEN_EVENT = 'header-menu-open'
@@ -66,7 +79,7 @@ const PILL_TRANSITION_DURATION = Math.max(LINKS_DURATION, LOGO_DURATION)
 const LOGO_SMALL_CLASS = 'is-small'
 const FEATURE_COMPACT_CLASS = 'is-header-compact'
 const LINK_INVERTED_CLASS = 'is-inverted'
-const TRANSITIONING_CLASS = 'is-header-transitioning' //on <html> while a compact / spread runs
+export const TRANSITIONING_CLASS = 'is-header-transitioning' //on <html> while a compact / spread runs
 const MENU_LINE_SELECTOR = '.menu-line-divider'
 
 //Menu Icon — the two lines cross into a close icon while the menu is open.
@@ -95,6 +108,16 @@ const COUNTER_EXIT_DURATION = 0.3
 const COUNTER_EXIT_STAGGER = 0.006
 const COUNTER_EXIT_EASE = 'power3.in'
 
+//Side Elements — hidden while compact, back when spread. Each moves up by its own distance
+//to the viewport's top edge (measured at the start of the hide) + the buffer
+const SIDE_ELEMENTS_SELECTOR = '.header-content-icon, .header-content-time'
+const SIDE_HIDDEN_BUFFER_PX = 8
+const SIDE_HIDE_DURATION = 0.5
+const SIDE_HIDE_EASE = 'power3.in'
+const SIDE_SHOW_DURATION = 0.7
+const SIDE_SHOW_EASE = 'power3.out'
+const SIDE_STAGGER = 0.05
+
 //Links Placer Background — fades the share of header-color, so the pill always takes the page's color
 const PLACER_FILL_PROPERTY = '--placer-fill' //0..1 share of header-color in the pill (main.css "Header Pill Fill")
 const PLACER_FILL_HIDDEN = 0
@@ -114,6 +137,7 @@ export class HeaderCompact extends Module {
         this.counterText = document.getElementById('menu-counter-text')
         this.counterWrapper = document.querySelector('.header-counter-wrapper')
         this.menuContent = document.querySelector('.header-menu-content')
+        this.sideElements = [...document.querySelectorAll(SIDE_ELEMENTS_SELECTOR)]
 
         if (!this.casesLink || !this.menuLink || !this.logo || !this.linksPlacer || !this.smallLogoPlacer) {
             console.warn('HeaderCompact: header elements missing, skipping')
@@ -141,6 +165,9 @@ export class HeaderCompact extends Module {
         this.logoFlip = null
         this.placerTween = null
         this.counterTween = null
+        this.sideTween = null
+        this.isSideHidden = false
+        this.isDescriptorHidden = false //DescriptorReveal starts shown
 
         //isAnimating — a compact/spread transition is running, menu clicks are ignored.
         //isMenuOpen — the menu's direction: true from the open click, false from the close click.
@@ -154,10 +181,13 @@ export class HeaderCompact extends Module {
         this.isIntroHeld = false //HeaderReveal: pill fill + counter stay hidden until the first reveal
         this.animationLock = null
         this.menuReveal = new MenuReveal().mount()
+        this.descriptorReveal = this.descriptor ? new DescriptorReveal(this.descriptor).mount() : null
 
+        //End kept past start: on a page that scrolls less than COMPACT_SCROLL_PX, 'max' lands before
+        //start, the range inverts and scroll 0 reads as progress 1 — onEnter fired on load
         this.scrollTrigger = this.animate(ScrollTrigger.create({
             start: COMPACT_SCROLL_PX,
-            end: 'max',
+            end: () => Math.max(ScrollTrigger.maxScroll(window), COMPACT_SCROLL_PX + 1),
             onEnter: () => this.onScrollThreshold(true),
             onLeaveBack: () => this.onScrollThreshold(false),
         }))
@@ -167,6 +197,8 @@ export class HeaderCompact extends Module {
         this.listen(this.menuLink, 'mouseenter', () => this.bounceMenuIcon(true))
         this.listen(this.menuLink, 'mouseleave', () => this.bounceMenuIcon(false))
         this.listen(document, FOOTER_ZONE_EVENT, (event) => this.setOverFooter(Boolean(event.detail?.isOverFooter)))
+        this.pinnedMedia = window.matchMedia(PINNED_COMPACT_MEDIA)
+        this.listen(this.pinnedMedia, 'change', () => this.syncPinned())
 
         //Viewport changes move the pill — keep the menu content level with it while open
         this.listen(window, 'resize', () => {
@@ -193,8 +225,16 @@ export class HeaderCompact extends Module {
     //Pinned pages go compact instantly; leaving one goes back to what the scroll says, also
     //instantly. Other page changes keep their normal (animated) scroll behaviour
     setNamespace(namespace) {
+        this.namespace = namespace
+        this.syncPinned()
+        this.syncDescriptor({ instant: true }) //DESCRIPTOR_KEPT_NAMESPACES flips it with no compact change
+    }
+
+    //Pinned: a pinned page, or the mobile width (PINNED_COMPACT_MEDIA) on any page
+    syncPinned() {
         let wasPinned = this.isPinnedCompact
-        this.isPinnedCompact = PINNED_COMPACT_NAMESPACES.includes(namespace)
+        this.isPinnedCompact = PINNED_COMPACT_NAMESPACES.includes(this.namespace) || Boolean(this.pinnedMedia?.matches)
+        if (this.homes && this.pinnedMedia?.matches) this.clearPlacerTop() //desktop alignment doesn't apply here
         if (!this.homes || this.isMenuLocked) return
 
         if (this.isPinnedCompact) this.setCompact(true, { instant: true })
@@ -205,12 +245,16 @@ export class HeaderCompact extends Module {
     //and counter letters stay hidden until releaseIntro() brings them in with the reveal
     holdIntro() {
         this.isIntroHeld = true
+        this.isDescriptorHidden = true
+        this.descriptorReveal?.hide({ instant: true })
     }
 
-    //delay — seconds into the header reveal. Spread: nothing to do, the extras are hidden anyway
+    //delay — seconds into the header reveal (pill + counter; the descriptor comes in with the logo,
+    //unless scroll has compacted the header by then). Spread: no pill extras, they're hidden anyway
     releaseIntro(delay = 0) {
         if (!this.isIntroHeld) return
         this.isIntroHeld = false
+        this.syncDescriptor()
         if (!this.homes || !this.isCompact) return
 
         this.placerFillTween?.kill()
@@ -255,7 +299,9 @@ export class HeaderCompact extends Module {
         let needsCompact = !this.isCompact
         this.isMenuOpen = true
         this.isMenuLocked = true
-        this.setCompact(true) //no-op when already compact from scrolling, or still compact from a close in progress
+        //No-op when already compact from scrolling, or still compact from a close in progress.
+        //Side elements stay as they are — shown at the top, hidden mid-scroll
+        this.setCompact(true, { keepsSideElements: true })
         this.openMenu(needsCompact ? PILL_TRANSITION_DURATION : 0)
     }
 
@@ -394,8 +440,10 @@ export class HeaderCompact extends Module {
     //Animations
 
     //instant — jump to the end state (pinned pages, screen covered): every tween below is
-    //built as usual, then finished on the spot; no click lock, links' color snaps
-    setCompact(isCompact, { instant = false } = {}) {
+    //built as usual, then finished on the spot; no click lock, links' color snaps.
+    //keepsSideElements — the menu compacting at the top: side elements don't follow
+    setCompact(isCompact, { instant = false, keepsSideElements = false } = {}) {
+        if (!keepsSideElements) this.setSideHidden(isCompact, { instant })
         if (isCompact === this.isCompact) return
         this.isCompact = isCompact
         if (instant) this.unlockClicks()
@@ -492,6 +540,42 @@ export class HeaderCompact extends Module {
         if (instant) [this.logoFlip, this.placerTween, this.counterTween].forEach((tween) => tween?.progress(1))
     }
 
+    //10 — up out of view / back down; a reversal mid-way turns around from where they are
+    setSideHidden(isHidden, { instant = false } = {}) {
+        let isChanged = isHidden !== this.isSideHidden
+        this.isSideHidden = isHidden
+        this.syncDescriptor({ instant }) //also on no change — a pinned page switch alone flips it
+
+        if (!isChanged || !this.sideElements?.length) return
+        this.sideTween?.kill()
+        this.sideTween = this.animate(gsap.to(this.sideElements, isHidden
+            ? { y: (index, element) => this.sideHiddenY(element), duration: SIDE_HIDE_DURATION, stagger: SIDE_STAGGER, ease: SIDE_HIDE_EASE }
+            : { y: 0, duration: SIDE_SHOW_DURATION, stagger: SIDE_STAGGER, ease: SIDE_SHOW_EASE }
+        ))
+        if (instant) this.sideTween.progress(1)
+    }
+
+    //Descriptor hides with the side elements, except on pinned pages (always compact) and
+    //DESCRIPTOR_KEPT_NAMESPACES, where it stays.
+    //Held for the header intro — stays hidden, releaseIntro() syncs it
+    syncDescriptor({ instant = false } = {}) {
+        if (this.isIntroHeld || !this.descriptorReveal) return
+        let isKept = this.isPinnedCompact || DESCRIPTOR_KEPT_NAMESPACES.includes(this.namespace)
+        let isHidden = this.isSideHidden && !isKept
+        if (isHidden === this.isDescriptorHidden) return
+        this.isDescriptorHidden = isHidden
+        if (isHidden) this.descriptorReveal.hide({ instant })
+        else this.descriptorReveal.show({ instant })
+    }
+
+    //Distance from the element's resting bottom edge to just past the viewport's top. The current
+    //y is taken out, so a hide that starts mid-show still measures from the resting spot
+    sideHiddenY(element) {
+        let currentY = Number(gsap.getProperty(element, 'y')) || 0
+        let restingBottom = element.getBoundingClientRect().bottom - currentY
+        return -(restingBottom + SIDE_HIDDEN_BUFFER_PX)
+    }
+
     //Placer Edges — { left, right } in px, relative to the pill's containing block
 
     placerContainingRect() {
@@ -543,10 +627,14 @@ export class HeaderCompact extends Module {
         document.documentElement.classList.remove(TRANSITIONING_CLASS)
     }
 
-    //Replaces Webflow's fixed top (-0.5rem): shifts the pill so #header-cases-link sits at
-    //exactly the height it has at home — no vertical jump moving in or out, any viewport.
-    //Call with the link's home top, after it has been moved into the pill.
+    //Shifts the pill so #header-cases-link sits at exactly the height it has at home — no
+    //vertical jump moving in or out. Call with the link's home top, after it has been moved
+    //into the pill. At PINNED_COMPACT_MEDIA there's no spread state to match: Webflow's placement
     alignPlacerTop(casesHomeTop) {
+        if (this.pinnedMedia?.matches) {
+            this.clearPlacerTop()
+            return
+        }
         let casesInPlacerTop = this.casesLink.getBoundingClientRect().top
         let currentTop = parseFloat(getComputedStyle(this.linksPlacer).top) || 0
         gsap.set(this.linksPlacer, { top: currentTop + (casesHomeTop - casesInPlacerTop) })
@@ -562,6 +650,11 @@ export class HeaderCompact extends Module {
         let wrapperTop = this.counterWrapper.getBoundingClientRect().top
         let currentTop = parseFloat(getComputedStyle(this.counterWrapper).top) || 0
         gsap.set(this.counterWrapper, { top: currentTop + (placerTop - wrapperTop) })
+    }
+
+    clearPlacerTop() {
+        gsap.set(this.linksPlacer, { clearProps: 'top' })
+        if (this.counterWrapper) gsap.set(this.counterWrapper, { clearProps: 'top' })
     }
 
     //Around #menu-counter-text's mask — prepend/append are no-ops position-wise if already there
@@ -599,6 +692,8 @@ export class HeaderCompact extends Module {
 
         this.menuReveal?.destroy()
         this.menuReveal = null
+        this.descriptorReveal?.destroy()
+        this.descriptorReveal = null
         this.isMenuOpen = false
         document.documentElement.classList.remove(TRANSITIONING_CLASS)
 
@@ -610,9 +705,11 @@ export class HeaderCompact extends Module {
             this.counterMask.remove()
         }
         gsap.set([this.casesLink, this.menuLink, ...this.logoFlipTargets()], { clearProps: 'all' })
-        gsap.set(this.linksPlacer, { clearProps: 'left,right,top' })
+        if (this.sideElements?.length) gsap.set(this.sideElements, { clearProps: 'transform' })
+        this.isSideHidden = false
+        gsap.set(this.linksPlacer, { clearProps: 'left,right' })
+        this.clearPlacerTop()
         this.linksPlacer.style.removeProperty(PLACER_FILL_PROPERTY)
-        if (this.counterWrapper) gsap.set(this.counterWrapper, { clearProps: 'top' })
         if (this.menuContent) this.menuContent.style.paddingTop = ''
         this.isCompact = false
     }

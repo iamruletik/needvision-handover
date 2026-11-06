@@ -138,6 +138,7 @@ export class World implements IWorld {
     // readonly worldDebug = new WorldDebugModule(this); // DEBUG TOOLS DISABLED
 
     private isRendering = false;
+    private isParked = false;
     private disposeDone: Promise<void> | null = null;
 
     constructor(readonly options: CanvasData) {
@@ -218,7 +219,7 @@ export class World implements IWorld {
     }
 
     syncAnimationLoopWithScrollProgress() {
-        if (!this.renderer.hasInitialized() || this.disposed || !this.pointerHandler) {
+        if (!this.renderer.hasInitialized() || this.disposed || this.isParked || !this.pointerHandler) {
             return;
         }
 
@@ -233,6 +234,21 @@ export class World implements IWorld {
         } else if (!this.animationLoopRunning) {
             this.renderer.setAnimationLoop(this.render);
             this.animationLoopRunning = true;
+        }
+    }
+
+    setParked(parked: boolean) {
+        this.isParked = parked;
+
+        if (!parked) {
+            this.syncAnimationLoopWithScrollProgress();
+
+            return;
+        }
+
+        if (this.animationLoopRunning) {
+            this.renderer.setAnimationLoop(null);
+            this.animationLoopRunning = false;
         }
     }
 

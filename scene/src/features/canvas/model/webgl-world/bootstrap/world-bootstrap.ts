@@ -62,6 +62,10 @@ export async function runWorldBootstrap(world: World, options: CanvasData): Prom
                 world.camera = camera;
                 world.camera.near = 0.5;
                 world.camera.far = 1000;
+                // The GLB camera carries the aspect it was authored at (landscape) — onResize only
+                // fixes it when the size changes, which it doesn't on first load
+                world.camera.aspect = options.width / Math.max(1, options.height);
+                world.camera.updateProjectionMatrix();
                 world.cameraPositionInitial = world.camera.position.clone();
 
                 world.pointerHandler = new Pointer(

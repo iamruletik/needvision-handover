@@ -5,7 +5,8 @@ import { Module } from '../core/Module'
 //JS-injected masks (one mask per <br>-separated line). Hidden in setup,
 //plays on reveal() — after the preloader / eye transition.
 
-const ROOT_SELECTOR = '.page_hero-scroll'
+//Container only — the next-case stage on <body> carries a copy of the hint (CaseHeroReveal plays that one)
+const ROOT_SELECTOR = '[data-barba="container"] .page_hero-scroll'
 const ICON_SELECTOR = '.scroll-to-icon'
 const TEXT_SELECTOR = '.casepage_hero-scroll-text'
 
@@ -43,10 +44,18 @@ export class HeroScrollReveal extends Module {
         })
     }
 
-    //Called once the screen is visible
-    reveal() {
+    //Called once the screen is visible. isInstant — straight to the revealed state (next-case swap)
+    reveal({ isInstant = false } = {}) {
         if (!this.hints?.length || this.isRevealed) return
         this.isRevealed = true
+
+        if (isInstant) {
+            this.hints.forEach(({ icon, lines }) => {
+                if (icon) gsap.set(icon, { autoAlpha: 1 })
+                if (lines.length) gsap.set(lines, { yPercent: 0 })
+            })
+            return
+        }
 
         this.hints.forEach(({ icon, lines }) => {
             if (icon) {

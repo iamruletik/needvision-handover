@@ -49,6 +49,20 @@
     height: 100%;
 }
 
+/* Loading label — dead center over the shut eye; type from Webflow's .header-content-place
+   (also on the element), white on the dark cover. SplitBlurReveal hides it until it's needed */
+.eye-transition__loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 .eye-cover-scale,
 .eye-aperture-scale {
     transform-box: view-box;
@@ -183,6 +197,12 @@
 
 [data-marquee-ready][data-marquee-reverse] {
     animation-direction: reverse;
+}
+
+/* 404 Running Headline — space between the copies. A margin on each copy, not a flex gap: a gap
+   only sits between them, so the two halves would differ and -50% would land off the seam */
+.running-headline-svg[data-marquee-ready] > svg {
+    margin-right: 1rem;
 }
 
 @keyframes marquee-scroll {
@@ -392,6 +412,11 @@
 .header-content-logo-container-feature.is-header-compact {
     padding-top: 2rem;
 }
+@media screen and (max-width: 991px) {
+    .header-content-logo-container-feature.is-header-compact {
+        padding-top: 2.5rem;
+    }
+}
 /* .is-inverted color fades both ways, in step with the pill (0.9s power3.inOut) — only while
    html.is-header-transitioning (HeaderCompact.js, for the length of a compact / spread), so
    other color changes (company color zones) snap like the rest of the header.
@@ -553,33 +578,54 @@
 /* Header Color per Page — reads the namespace off the Barba container, no JS.
    header-color = the header's own color; small-header-color = its opposite (text on the pill
    and in the menu, which are filled with header-color).
-   On <html> so the header outside the container inherits it; follows every Barba swap.
-   html:has() (0,1,1) outranks Webflow's :root (0,1,0). No match = Webflow default.
-   :has() — Safari 15.4+, older browsers keep the default.
-   Known: below 991px Webflow re-declares these variables on body, which shadows <html> — mobile TBD */
-html:has([data-barba-namespace="home"]) {
+   Set on <body>, not <html>: below 991px Webflow's Mobile variable mode re-declares every variable
+   on body, which would shadow anything on <html>. body is above the header (outside the container),
+   so it still reaches it; follows every Barba swap.
+   html:has() body (0,1,2) outranks Webflow's :root (0,1,0) and its mobile body (0,0,1). No match =
+   Webflow default. Footer rules and the zone modules' inline pairs (colorZoneTargets.js) live on
+   body too — all on one element, or their priority order breaks.
+   :has() — Safari 15.4+, older browsers keep the default */
+html:has([data-barba-namespace="home"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
     --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
 }
-html:has([data-barba-namespace="privacy"]) {
+html:has([data-barba-namespace="privacy"]) body {
     --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
     --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
 }
-html:has([data-barba-namespace="contacts"]) {
+html:has([data-barba-namespace="contacts"]) body {
     --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black);
     --floating-cta--header-color: var(--main-colours--orange); --floating-cta--small-header-color: var(--main-colours--black);
 }
-html:has([data-barba-namespace="cases"]) {
+html:has([data-barba-namespace="cases"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
     --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
 }
-html:has([data-barba-namespace="company"]) {
+html:has([data-barba-namespace="company"]) body {
     --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
     --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
 }
-html:has([data-barba-namespace="case-study"]) {
+html:has([data-barba-namespace="case-study"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
     --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
+}
+html:has([data-barba-namespace="404"]) body {
+    --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black);
+    --floating-cta--header-color: var(--main-colours--orange); --floating-cta--small-header-color: var(--main-colours--black);
+}
+
+/* Money Counter on Orange — the menu's label pill and small number go dark red wherever the
+   header is orange: the orange pages above + over the footer (Footer Zone Color below). Keep
+   this list in sync with the orange header-color rules */
+html:has([data-barba-namespace="contacts"]) .money-counter-label,
+html:has([data-barba-namespace="404"]) .money-counter-label,
+html.is-footer-under-header .money-counter-label {
+    background-color: #792B17;
+}
+html:has([data-barba-namespace="contacts"]) .money-counter-small-number,
+html:has([data-barba-namespace="404"]) .money-counter-small-number,
+html.is-footer-under-header .money-counter-small-number {
+    color: #792B17;
 }
 
 /* Floating CTA colors — its own pair, so it doesn't flip when the header crosses a section (the
@@ -597,20 +643,54 @@ html:has([data-barba-namespace="case-study"]) {
 }
 
 /* Footer Zone Color — orange over the footer on every page (FooterHeaderColor.js toggles the class
-   per target). !important beats the per-page :has() rules and the zone modules' inline pairs */
-html.is-footer-under-header {
+   per target). On body like the rest; !important beats the per-page :has() rules and the zone
+   modules' inline pairs */
+html.is-footer-under-header body {
     --main-colours--header-color: var(--main-colours--orange) !important;
     --main-colours--small-header-color: var(--main-colours--black) !important;
 }
-html.is-footer-under-floating-cta {
+html.is-footer-under-floating-cta body {
     --floating-cta--header-color: var(--main-colours--orange) !important;
     --floating-cta--small-header-color: var(--main-colours--black) !important;
 }
 
-/* Footer Interactive Image — company page only. Hidden everywhere else; FooterLight.js skips
+/* Footer Interactive Image — company and 404 only. Hidden everywhere else; FooterLight.js skips
    itself when the image isn't rendered, so this rule alone decides where it runs.
    :has() — Safari 15.4+; older browsers show the image without the light effect */
-html:not(:has([data-barba-namespace="company"])) .footer-interactive-image { display: none; }
+html:not(:has([data-barba-namespace="company"], [data-barba-namespace="404"])) .footer-interactive-image { display: none; }
+/* Light Cone — glow from the header logo's dot to the footer light (LightCone.js injects it into
+   .footer-interactive-image and writes the geometry vars). conic-gradient: opaque only over the
+   cone's angles, soft stops either side stand in for a blur. The mask fades it along its length:
+   --cone-start-alpha at the dot, --cone-end-alpha at the light, gone at --cone-tail.
+   No vars yet = zero-width cone, nothing drawn. mask-image — Safari < 15.4 needs -webkit- */
+.footer-light-cone {
+    --cone-color: #E2E3D3;
+    --cone-start-alpha: 0.6;
+    --cone-end-alpha: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background-image: conic-gradient(
+        from var(--cone-from, 0deg) at var(--cone-x, 50%) var(--cone-y, 0px),
+        transparent 0deg,
+        var(--cone-color) var(--cone-solid-start, 0deg),
+        var(--cone-color) var(--cone-solid-end, 0deg),
+        transparent var(--cone-end, 0deg)
+    );
+    -webkit-mask-image: radial-gradient(circle at var(--cone-x, 50%) var(--cone-y, 0px),
+        rgb(0 0 0 / var(--cone-start-alpha)) 0px,
+        rgb(0 0 0 / var(--cone-end-alpha)) var(--cone-length, 0px),
+        transparent var(--cone-tail, 0px));
+    mask-image: radial-gradient(circle at var(--cone-x, 50%) var(--cone-y, 0px),
+        rgb(0 0 0 / var(--cone-start-alpha)) 0px,
+        rgb(0 0 0 / var(--cone-end-alpha)) var(--cone-length, 0px),
+        transparent var(--cone-tail, 0px));
+}
+@media (max-width: 991px) {
+    .footer-light-cone { --cone-start-alpha: 0.3; }
+}
+
 /* Footer Video — the other way round: everywhere except company */
 html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 
@@ -714,6 +794,15 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 .call-to-action-svg {
     --floating-sign-duration: 16s;
     --floating-sign-shift: -59%;
+    will-change: transform;
+    animation: floating-sign-slide var(--floating-sign-duration) linear infinite;
+}
+
+/* Keep Scrolling pill — its svg repeats the phrase every 258 of 1758 viewBox units; sliding
+   exactly one repeat (258 / 1758) and restarting is seamless. Same keyframes as above */
+.keep-scrolling-text {
+    --floating-sign-duration: 6s;
+    --floating-sign-shift: -14.6758%;
     will-change: transform;
     animation: floating-sign-slide var(--floating-sign-duration) linear infinite;
 }
@@ -863,6 +952,7 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     .arrow-scroll-track,
     .floating-button-wrapper .floating-button-sign,
     .call-to-action-svg,
+    .keep-scrolling-text,
     .footer_form-marquee-btn .footer-marquee_track,
     .footer-cta-morph .footer-marquee_track {
         animation: none;
@@ -1106,6 +1196,13 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     width: 1vw;
 }
 
+/* No hover state at 991 and down (CasesPage / CaseRowFill skip it there) — no arrow either */
+@media screen and (max-width: 991px) {
+    .case-row_arrow {
+        display: none !important;
+    }
+}
+
 /* Cases Sort Tabs — SortTabIndicator.js puts a black pill behind the active tab and slides it;
    the active tab's white text is the Webflow combo (.is-active), crossfaded here. Inactive tabs
    get a light gray pill on hover */
@@ -1120,7 +1217,7 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     top: 0;
     left: 0;
     z-index: 0;
-    border-radius: 5vw; /* same as .filter-tabs_btn */
+    border-radius: 100rem; /* same as .filter-tabs_btn in Webflow */
     background-color: var(--main-colours--black);
     pointer-events: none;
     will-change: transform, width;
@@ -1135,6 +1232,58 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     .filter-tabs_btn:not(.is-active):hover {
         background-color: var(--sort-tab-hover-background);
     }
+}
+
+
+/* Next Case — keep-scrolling pill hidden until the runway (NextCaseTransition.js scrubs it in);
+   fill grows from the left. The stage is the stand-in for the next hero: same 100svh box as
+   .casepage_hero, under the header / pill (999), rises from below and grows (GSAP sets the transform) */
+.keep-scrolling-content {
+    opacity: 0;
+    visibility: hidden;
+}
+.keep-scrolling-fill {
+    transform: scaleX(0);
+    transform-origin: 0% 50%;
+}
+.next-case-stage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 998;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+    background-color: #181514; /* .casepage_hero-overlay's base — the stage reads as hero while the image loads */
+    transform: scale(0); /* hidden until the scrub takes over */
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    will-change: transform;
+}
+/* Full size (NextCaseTransition): no more layer hint — Chrome redraws it at full resolution
+   while it still rises, instead of stretching the half-size raster it made while growing, so
+   it renders exactly like the real hero it's swapped for */
+.next-case-stage.is-full-size {
+    will-change: auto;
+}
+/* The copy of the next hero sits in a casepage_main wrapper for its inherited type — only the
+   inheritance is wanted, not the page's bottom padding */
+.next-case-stage > .casepage_main {
+    padding-bottom: 0;
+}
+.floating-button-wrapper {
+    transition: opacity 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+html.is-next-case-pulling .floating-button-wrapper {
+    opacity: 0;
+}
+/* During the swap Lenis is stopped — its CSS sets overflow: clip, the scrollbar would vanish and
+   the page widen. Overridden back to normal, and NextCaseSwap keeps the body's height while the
+   old container is out, so the scrollbar never goes. Never overflow: scroll / scrollbar-gutter
+   on <html> here: Chrome then takes the scrollbar out of vw, and the root font-size is in vw —
+   every rem on the page shrinks for the duration of the swap */
+html.lenis.lenis-stopped.is-next-case-swapping {
+    overflow: visible;
 }
 
 /* Sidebar preview reveals bottom-up through clip-path */

@@ -15,6 +15,8 @@ type InitPayload = Omit<CanvasData, 'isWorker' | 'onInitialized' | 'onStatsData'
 
 let world: World | undefined;
 let headerLogoRectPending: HeaderLogoRect | null | undefined;
+// Parked before the world exists (init still awaiting the adapter) — applied once it does
+let isParkedPending = false;
 
 self.onmessage = async (event: MessageEvent<{ message: string; payload?: unknown }>) => {
     const { message, payload } = event.data;
@@ -64,6 +66,16 @@ self.onmessage = async (event: MessageEvent<{ message: string; payload?: unknown
                 headerLogoRectPending = undefined;
             }
 
+            if (isParkedPending) {
+                world.setParked(true);
+            }
+
+            break;
+        }
+
+        case 'setParked': {
+            isParkedPending = Boolean(payload);
+            world?.setParked(isParkedPending);
             break;
         }
 

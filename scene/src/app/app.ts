@@ -9,8 +9,8 @@ document.documentElement.classList.add('js-ready');
 
 canvas.init();
 
-// Handle for the host site: Barba page transitions destroy/re-init the scene
-// when navigating away from and back to the home page.
+// Handle for the host site: Barba page transitions park the scene when leaving the home page
+// and init() resumes it on the way back (destroy() for a real teardown, isReady() — first frame live).
 (window as any).needvisionScene = canvas;
 
 // Spotlight sits on the dot in the header logo (Webflow embed: <path id="theDot"> inside

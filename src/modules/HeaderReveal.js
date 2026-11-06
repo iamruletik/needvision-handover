@@ -6,7 +6,7 @@ import { SplitBlurReveal } from './SplitBlurReveal'
 //Whatever state HeaderCompact left the header in under the preloader (spread, or compact on
 //pinned pages / a reload with scroll), the same elements come in, cascaded by group:
 //  1. logo — its svg rises inside the logo box + un-blurs (one "line", SplitText has no text
-//     to split); descriptor + .header-content-icon fade
+//     to split); descriptor — HeaderCompact's DescriptorReveal, via releaseIntro(); .header-content-icon fade
 //  2. place + time texts — SplitBlurReveal
 //  3. both links — text SplitBlurReveal, icon (arrow / menu lines) fades; compact only:
 //     pill fill + counter letters, via HeaderCompact.releaseIntro()
@@ -15,7 +15,6 @@ import { SplitBlurReveal } from './SplitBlurReveal'
 //so Clock / HeaderCompact see their normal markup afterwards.
 
 const LOGO_SELECTOR = '#header-logo-actual'
-const DESCRIPTOR_SELECTOR = '.descriptor-svg'
 const ICON_SELECTOR = '.header-content-icon'
 const PLACE_SELECTOR = '.header-content-place'
 const TIME_SELECTOR = '.header-content-time-text'
@@ -56,10 +55,7 @@ export class HeaderReveal extends Module {
         this.linkTexts = this.links.map((link) => link.querySelector(LINK_TEXT_SELECTOR)).filter(Boolean)
 
         //Fades per group
-        this.firstFades = [
-            ...document.querySelectorAll(DESCRIPTOR_SELECTOR),
-            ...document.querySelectorAll(ICON_SELECTOR),
-        ]
+        this.firstFades = [...document.querySelectorAll(ICON_SELECTOR)]
         this.linkIcons = this.links.flatMap((link) => [...link.querySelectorAll(LINK_ICON_SELECTOR)])
 
         this.texts = [...this.placeTexts, ...this.timeTexts, ...this.linkTexts]
@@ -94,10 +90,10 @@ export class HeaderReveal extends Module {
 
     //Helpers
 
-    //The one .header-content-place that isn't a link label or the profit counter
+    //The one .header-content-place that isn't a link label, the profit counter or the eye's loading label
     standalonePlaceTexts() {
         return [...document.querySelectorAll(PLACE_SELECTOR)]
-            .filter((element) => element.id !== COUNTER_TEXT_ID && !element.closest(LINK_SELECTOR))
+            .filter((element) => element.id !== COUNTER_TEXT_ID && !element.closest(LINK_SELECTOR) && !element.closest('[data-eye-transition]'))
     }
 
     //Animations

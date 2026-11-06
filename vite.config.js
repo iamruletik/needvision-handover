@@ -43,6 +43,10 @@ export default defineConfig(({ command, mode }) => {
       // Explicit constant instead of import.meta.url: the prod build is an IIFE,
       // where import.meta doesn't exist at all — this works identically in both.
       __SITE_BASE__: JSON.stringify(command === "build" ? PRODUCTION_SITE_BASE : `${devOrigin}/`),
+      // Where the scene's models / textures live — ScenePrefetch warms them on non-home pages.
+      // Always the bucket: matches `scene:build:prod`; a dev scene build reads /static instead,
+      // there the prefetch just warms files nobody asks for
+      __SCENE_STATIC_BASE__: JSON.stringify(PRODUCTION_STATIC_BASE),
     },
     plugins: [
       cssInjectedByJsPlugin(), // one script tag in prod — CSS gets inlined into main.js instead of a separate file

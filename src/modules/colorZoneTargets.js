@@ -4,8 +4,9 @@ import { gsap } from '../core/gsap'
 //A zone module (HeaderColorZones, HeaderStagesInvert) builds its triggers once per target:
 //  header       — the line it sits on near the top of the screen
 //  floating CTA — the bottom button's own center line; it crosses sections at its own time
-//Each target writes its own pair of variables inline on <html> (main.css "Header Color per Page"
-//and "Floating CTA colors" hold the per-page defaults).
+//Each target writes its own pair of variables inline on <body> (main.css "Header Color per Page"
+//and "Floating CTA colors" hold the per-page defaults, also on body). Not <html>: below 991px
+//Webflow re-declares its variables on body, which would shadow anything set higher up.
 
 const HEADER_LINE = '40px' //from the top of the viewport — roughly where the header sits
 const FLOATING_CTA_SELECTOR = '.floating-button-wrapper .call-to-action'
@@ -39,14 +40,14 @@ function floatingCtaLine() {
 }
 
 export function setZoneColor(target, { color, inverted }) {
-    let root = document.documentElement
+    let root = document.body
     root.style.setProperty(target.colorProperty, color)
     root.style.setProperty(target.invertedProperty, inverted)
 }
 
 //Back to the per-page CSS rule
 export function clearZoneColor(target) {
-    let root = document.documentElement
+    let root = document.body
     root.style.removeProperty(target.colorProperty)
     root.style.removeProperty(target.invertedProperty)
 }

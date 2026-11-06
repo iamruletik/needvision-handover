@@ -7,6 +7,11 @@ import { Module } from '../core/Module'
 //src swap mid-animation — that was the jitter); layers under a finished one are removed.
 //Rows get numbered 01, 02, ... into .case-row_num (skipped silently until the
 //element is added in Webflow).
+//Only where CASE_ROW_HOVER_MEDIA matches (desktop with a real hover): elsewhere no row is active
+//(taps fire mouseenter too). Crossing it live switches the active row on / off.
+
+//Shared with CaseRowFill — the fill follows the same rule
+export const CASE_ROW_HOVER_MEDIA = '(hover: hover) and (min-width: 992px)'
 
 const PREVIEW_CLASS = 'cases-sidebar_preview'
 const REVEAL_DURATION = 0.5
@@ -29,13 +34,28 @@ export class CasesPage extends Module {
         this.currentSource = null
         this.previewRequest = 0
         this.activeIndex = -1
+        this.hoverMedia = window.matchMedia(CASE_ROW_HOVER_MEDIA)
 
-        this.setActive(0)
+        if (this.hoverMedia.matches) this.setActive(0)
 
         this.rows.forEach((row, index) => {
-            this.listen(row, 'mouseenter', () => this.setActive(index))
+            this.listen(row, 'mouseenter', () => {
+                if (this.hoverMedia.matches) this.setActive(index)
+            })
         })
         //No mouseleave — active row stays until another is hovered
+        this.listen(this.hoverMedia, 'change', () => {
+            if (this.hoverMedia.matches) this.setActive(0)
+            else this.clearActive()
+        })
+    }
+
+    //No active row — the preview in the (hidden) sidebar is left as is
+    clearActive() {
+        this.activeIndex = -1
+        this.currentSource = null
+        this.previewRequest++ //a preview still decoding is dropped
+        this.rows.forEach((row) => row.classList.remove('is-active'))
     }
 
     //Numbering — pads to 2 digits, wider when 100+ cases show up someday

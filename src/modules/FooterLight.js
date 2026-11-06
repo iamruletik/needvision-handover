@@ -1,10 +1,12 @@
 import { gsap } from '../core/gsap'
 import { Module } from '../core/Module'
+import { LightCone } from './LightCone'
 
 //Footer interactive image — .footer-interactive-light sits on top of the image with a
 //radial-gradient background that fades to transparent: a feathered hole. The hole
 //follows the cursor anywhere over the footer's box and drifts back to center when it
-//leaves. Mouse only.
+//leaves. Mouse only — touch keeps the hole where Webflow puts it.
+//A glow cone from the header logo's dot to the hole rides on top (LightCone), on touch too.
 //
 //The gradient stays authored in Webflow: JS reads it once and swaps only its position
 //for `at var(--light-x) var(--light-y)` — colors, stops and size are untouched.
@@ -23,17 +25,19 @@ const FOLLOW_EASE = 'power3.out'
 export class FooterLight extends Module {
 
     setup() {
-        if (!window.matchMedia(POINTER_MEDIA).matches) return
-
-        this.footer = document.querySelector(FOOTER_SELECTOR)
         this.container = document.querySelector(CONTAINER_SELECTOR)
         this.light = this.container?.querySelector(LIGHT_SELECTOR)
+        //No footer (404 — the image sits in the page itself): the image's own box is the hit area
+        this.footer = document.querySelector(FOOTER_SELECTOR) ?? this.container
         if (!this.footer || !this.container || !this.light) {
             console.warn('FooterLight: missing', { footer: !!this.footer, container: !!this.container, light: !!this.light })
             return
         }
         //Hidden by CSS on this page (main.css "Footer Interactive Image") — nothing to light
         if (this.container.getClientRects().length === 0) return
+
+        this.cone = new LightCone(this.container, this.light).mount()
+        if (!window.matchMedia(POINTER_MEDIA).matches) return
 
         let backgroundImage = getComputedStyle(this.light).backgroundImage
         let movableGradient = this.toMovableGradient(backgroundImage)
@@ -106,6 +110,12 @@ export class FooterLight extends Module {
     writePosition() {
         this.light.style.setProperty('--light-x', `${this.position.x}%`)
         this.light.style.setProperty('--light-y', `${this.position.y}%`)
+        this.cone?.aimAt(this.position.x, this.position.y)
+    }
+
+    //Called once the screen is visible
+    reveal() {
+        this.cone?.reveal()
     }
 
     isOverFooter(event) {
@@ -143,6 +153,8 @@ export class FooterLight extends Module {
 
     destroy() {
         super.destroy()
+        this.cone?.destroy()
+        this.cone = null
         if (!this.light) return
         if (this.position) gsap.killTweensOf(this.position)
         this.light.style.backgroundImage = ''

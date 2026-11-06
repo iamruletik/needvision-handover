@@ -1,5 +1,6 @@
 import { gsap } from '../../core/gsap'
 import { Module } from '../../core/Module'
+import { CASE_ROW_HOVER_MEDIA } from '../../modules/CasesPage'
 
 //Case row fill — same wipe as the menu's large links (MenuLinks.js), but sticky: the hovered row
 //keeps its fill until another row is hovered (CasesPage owns .is-active + the preview).
@@ -8,6 +9,7 @@ import { Module } from '../../core/Module'
 //layout work per frame. Each activation owns its own fill: created on enter, removed when its
 //collapse finishes. A fill still wiping in is never cut — its collapse queues behind it.
 //Text / logo / arrow follow .is-active in CSS (main.css "Cases Page").
+//Desktop with a real hover only (CASE_ROW_HOVER_MEDIA, same rule as CasesPage) — elsewhere no fill.
 
 const ROW_SELECTOR = '.case-row'
 const ACTIVE_CLASS = 'is-active'
@@ -35,19 +37,39 @@ export class CaseRowFill extends Module {
         this.enterTweens = new WeakMap() //fill -> its wipe-in, so a collapse can wait for it
         this.activeRow = null
         this.activeFill = null
+        this.hoverMedia = window.matchMedia(CASE_ROW_HOVER_MEDIA)
 
-        //Row CasesPage already activated (first one) — filled from the start, no wipe
-        let initialRow = this.rows.find((row) => row.classList.contains(ACTIVE_CLASS))
-        if (initialRow) {
-            this.activeRow = initialRow
-            this.activeFill = this.createFill(initialRow)
-            gsap.set(this.activeFill, { clipPath: CLIP_FULL })
-        }
+        if (this.hoverMedia.matches) this.fillInitialRow()
 
-        this.rows.forEach((row) => this.listen(row, 'mouseenter', (event) => this.activate(row, event)))
+        this.rows.forEach((row) => this.listen(row, 'mouseenter', (event) => {
+            if (this.hoverMedia.matches) this.activate(row, event)
+        }))
+        //CasesPage reacts first (mounted earlier) — its active row is set by the time this runs
+        this.listen(this.hoverMedia, 'change', () => {
+            if (this.hoverMedia.matches) this.fillInitialRow()
+            else this.clearFills()
+        })
     }
 
     //Helpers
+
+    //Row CasesPage already activated (first one) — filled from the start, no wipe
+    fillInitialRow() {
+        let initialRow = this.rows.find((row) => row.classList.contains(ACTIVE_CLASS))
+        if (!initialRow || this.activeRow) return
+        this.activeRow = initialRow
+        this.activeFill = this.createFill(initialRow)
+        gsap.set(this.activeFill, { clipPath: CLIP_FULL })
+    }
+
+    clearFills() {
+        this.rows.forEach((row) => row.querySelectorAll(`:scope > .${FILL_CLASS}`).forEach((fill) => {
+            gsap.killTweensOf(fill)
+            fill.remove()
+        }))
+        this.activeRow = null
+        this.activeFill = null
+    }
 
     createFill(row) {
         let fill = document.createElement('span')
@@ -108,9 +130,7 @@ export class CaseRowFill extends Module {
 
     destroy() {
         super.destroy()
-        this.rows?.forEach((row) => row.querySelectorAll(`:scope > .${FILL_CLASS}`).forEach((fill) => fill.remove()))
+        if (this.rows?.length) this.clearFills()
         this.rows = []
-        this.activeRow = null
-        this.activeFill = null
     }
 }

@@ -10,6 +10,7 @@ import { MenuLinks } from './modules/MenuLinks'
 import { MenuMoney } from './modules/MenuMoney'
 import { IconRoll } from './modules/IconRoll'
 import { HeaderReveal } from './modules/HeaderReveal'
+import { HeaderHeight } from './modules/HeaderHeight'
 import { LogoArc } from './modules/LogoArc'
 import { LayoutRefresh } from './modules/LayoutRefresh'
 import { Clock } from './modules/Clock'
@@ -29,6 +30,7 @@ import { CasesSlider } from './modules/CasesSlider'
 import { GallerySlider } from './modules/GallerySlider'
 import { TeamSlider } from './modules/TeamSlider'
 import { SceneLoader } from './modules/SceneLoader'
+import { ScenePrefetch } from './modules/ScenePrefetch'
 import { ScrollArrow } from './modules/ScrollArrow'
 import { HeroScrollReveal } from './modules/HeroScrollReveal'
 import { FooterIntro } from './modules/FooterIntro'
@@ -42,9 +44,11 @@ import { SectionMarkerReveal } from './modules/SectionMarkerReveal'
 import { HomePage } from './pages/home'
 import { CasesPageScript } from './pages/cases'
 import { CaseStudyPage } from './pages/case-study'
+import { NextCaseSwap } from './pages/case-study/NextCaseSwap'
 import { CompanyPage } from './pages/company'
 import { ContactsPage } from './pages/contacts'
 import { PrivacyPage } from './pages/privacy'
+import { NotFoundPage } from './pages/not-found'
 
 //Persistent Layer — survives every page swap
 
@@ -52,6 +56,7 @@ const smoothScroll = new SmoothScroll()
 const eyeTransition = new EyeTransition()
 const preloader = new Preloader(smoothScroll).mount() //first load only, Barba uses the eye
 const headerCompact = new HeaderCompact().mount() //header lives outside the Barba container
+new HeaderHeight().mount() //--layout--header-height for sections that clear the fixed header
 const menuLinks = new MenuLinks().mount() //menu lives in the header — told the page on every swap
 const menuMoney = new MenuMoney().mount() //live counters + speedometer in the menu
 const casesLinkArrow = new IconRoll('#header-cases-link .arrow-line', 'header-arrow-roll').mount() //hover drum on the header arrow
@@ -79,6 +84,7 @@ const PAGE_MODULE_CLASSES = [
     GallerySlider, //before TeamSlider — it reads the gallery's first state on mount
     TeamSlider,
     SceneLoader,
+    ScenePrefetch,
     ScrollArrow,
     HeroScrollReveal,
     FooterIntro, //after Clock — Clock writes the time text it masks
@@ -105,6 +111,7 @@ const PAGE_CLASSES_BY_NAMESPACE = {
     'company': CompanyPage,
     'contacts': ContactsPage,
     'privacy': PrivacyPage,
+    '404': NotFoundPage,
 }
 
 let activeModules = []
@@ -136,11 +143,14 @@ function destroyPageModules() {
 }
 
 //Screen just became visible (preloader faded / eye opened) — modules with intro animations play them
-function revealPageModules() {
+//options.isInstant — modules that support it land in their revealed state with no animation
+//(next-case swap: the hero intro already played on the stage's copy)
+function revealPageModules(options = {}) {
+    console.log(`[case ${Math.round(performance.now())}ms] revealPageModules (${currentNamespace()}${options.isInstant ? ', instant' : ''})`) //debug — remove with CaseHeroReveal IS_DEBUG
     setSiteRevealed(true)
     headerReveal.reveal() //no-op after the first time
-    activeModules.forEach((module) => module.reveal?.())
-    activePage?.reveal?.()
+    activeModules.forEach((module) => module.reveal?.(options))
+    activePage?.reveal?.(options)
 }
 
 //The 3D scene (separate bundle) holds its fade-in until the page is visible: it reads
@@ -212,11 +222,32 @@ function logScroll(step) {
     console.log(`[scroll] ${step} — window: ${Math.round(window.scrollY)}, lenis: ${Math.round(smoothScroll.lenis.scroll)}, restoration: ${history.scrollRestoration}`)
 }
 
+//Next Case — case study -> next case without the eye (NextCaseSwap), page lifecycle passed in
+
+const nextCaseSwap = new NextCaseSwap({
+    smoothScroll,
+    headerCompact,
+    page: {
+        saveScroll: (url) => savedScrollByUrl.set(scrollKey(url), smoothScroll.lenis.scroll),
+        setSiteRevealed,
+        destroyModules: destroyPageModules,
+        applyNextHtml: (nextHtml) => {
+            reinitWebflow(nextHtml)
+            syncBodyClasses(nextHtml)
+        },
+        mountModules: mountPageModules,
+        revealModules: revealPageModules,
+    },
+}).mount()
+
 //Barba — eye blinks shut, page swaps under black, eye opens
+
+//Longest the eye stays shut waiting for a cold-booting 3D scene — tune from the [scene] ready log
+const SCENE_WAIT_MAX_MS = 4000
 
 barba.init({
     prevent: ({ el }) => el?.closest?.('[data-transition="off"]'),
-    transitions: [{
+    transitions: [nextCaseSwap.transition, {
         name: 'eye-blink',
 
         async leave({ current, trigger }) {
@@ -225,6 +256,7 @@ barba.init({
             setSiteRevealed(false) //next page's scene waits for the eye to open
             await headerCompact.closeMenuBeforeLeave() //menu up (e.g. a menu link) — it closes first, then the eye
             await eyeTransition.close()
+            eyeTransition.showLoadingAfter() //"LOADING" if the swap below runs long
             logScroll('leave — eye closed')
             headerCompact.snapMenuClosed() //safety net — new page always opens with the menu shut
             destroyPageModules()
@@ -253,7 +285,10 @@ barba.init({
             }
             logScroll(`enter — modules mounted (saved: ${savedScroll ?? 'none'})`)
 
-            await eyeTransition.wait()
+            //Home: the eye stays shut until the 3D scene's first frame is live (instant when it was parked)
+            let sceneLoader = activeModules.find((module) => module instanceof SceneLoader)
+            await Promise.all([eyeTransition.wait(), sceneLoader?.waitUntilReady(SCENE_WAIT_MAX_MS)])
+            await eyeTransition.hideLoading()
             await eyeTransition.open()
             logScroll('enter — eye open')
             revealPageModules()

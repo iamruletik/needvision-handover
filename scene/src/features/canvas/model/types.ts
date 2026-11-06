@@ -38,5 +38,7 @@ export interface IWorld {
     revealExperience: (params: ExperienceRevealParams) => void;
     setCityHoverColoringEnabled: (enabled: boolean) => void;
     setHeaderLogoRect: (rect: HeaderLogoRect | null) => void;
+    // Parked: everything stays built, the render loop is off (host page left home)
+    setParked: (parked: boolean) => void;
     dispose: () => void;
 }
