@@ -8,6 +8,7 @@ import {
     SPOTLIGHT_POSITION,
     SPOTLIGHT_TARGET_ABOVE_WATER_Y,
     SPOTLIGHT_TARGET_POINTER_DAMP_LAMBDA,
+    SPOTLIGHT_TOUCH_TARGET,
     SPOTLIGHT_VOLUMETRIC_MAX_DISTANCE,
 } from '../constants';
 import type { WorldFrameContext } from '../core/world-frame-context';
@@ -174,11 +175,10 @@ export class SpotlightModule {
 
         const coneBlend = getSpotConeStaticBlendT(w.scrollProgress);
 
-        this.spotConeBlendPointerScratch.set(
-            w.pointerHandler.scenePointer.x,
-            waterY + SPOTLIGHT_TARGET_ABOVE_WATER_Y,
-            w.pointerHandler.scenePointer.z,
-        );
+        // Touch: fixed aim instead of following taps
+        const aim = w.options.useCoarsePointer ? SPOTLIGHT_TOUCH_TARGET : w.pointerHandler.scenePointer;
+
+        this.spotConeBlendPointerScratch.set(aim.x, waterY + SPOTLIGHT_TARGET_ABOVE_WATER_Y, aim.z);
         this.spotConeBlendScrollScratch.lerpVectors(
             SCROLL_SPOT_TARGET_START,
             SCROLL_SPOT_TARGET_END,

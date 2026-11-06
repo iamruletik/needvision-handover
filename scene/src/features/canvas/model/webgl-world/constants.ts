@@ -7,6 +7,11 @@ export const LAYER_REFLECTION_CONTENT = 12;
 export const SPOTLIGHT_TARGET_LERP = 5;
 export const SPOTLIGHT_TARGET_POINTER_DAMP_LAMBDA = 38;
 export const SPOTLIGHT_TARGET_ABOVE_WATER_Y = 0.06;
+// Touch (coarse pointer): the spotlight ignores taps and aims here — x / z on the water, picked by
+// tapping on a 393×852 phone. y is unused (the water height + ABOVE_WATER_Y is kept)
+export const SPOTLIGHT_TOUCH_TARGET = new Vector3(4.749, 0, 2.183);
+// Touch: this building stays lit instead of following taps (the one under SPOTLIGHT_TOUCH_TARGET)
+export const CITY_HOVER_TOUCH_BUILDING_ID = 3;
 
 export const CITY_FLOOR_Y = -3;
 

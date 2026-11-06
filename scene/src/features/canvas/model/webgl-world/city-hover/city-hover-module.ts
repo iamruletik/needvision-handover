@@ -4,6 +4,7 @@ import { snapCityBuildingId } from '../batch-city-meshes';
 import {
     CITY_HOVER_RADIAL_MASK_MAX,
     CITY_HOVER_RAY_STICKY_FRAMES,
+    CITY_HOVER_TOUCH_BUILDING_ID,
     CITY_HOVER_TRANSITION_DAMP_LAMBDA,
     SCROLL_CITY_RAYCAST_MAX,
 } from '../constants';
@@ -63,6 +64,11 @@ export class CityHoverModule {
 
         this.cityPlaneHoverMeshes = cityLoad.cityPlaneHoverMeshes;
         this.cityPlaneHoverBuildingIdByMeshName = cityLoad.cityPlaneHoverBuildingIdByMeshName;
+
+        // Touch: lit from the start, no tap needed
+        if (this.world.options.useCoarsePointer) {
+            this.setColoringActive(true);
+        }
     }
 
     setColoringActive(enabled: boolean) {
@@ -118,7 +124,9 @@ export class CityHoverModule {
 
         let rayBuildingId = -1;
 
-        if (w.scrollProgress < SCROLL_CITY_RAYCAST_MAX) {
+        if (w.scrollProgress < SCROLL_CITY_RAYCAST_MAX && w.options.useCoarsePointer) {
+            rayBuildingId = CITY_HOVER_TOUCH_BUILDING_ID;
+        } else if (w.scrollProgress < SCROLL_CITY_RAYCAST_MAX) {
             camera.updateMatrixWorld(true);
             this.cityBatchedMesh?.updateMatrixWorld(true);
             this.cityHoverRaycaster.setFromCamera(pointerHandler.pointer, camera);

@@ -211,6 +211,30 @@
     }
 }
 
+/* Hero Image Stacked — ≤991: labels under the image instead of beside it. Two auto columns, the
+   image spans both on row 1, the labels auto-place into row 2 (DOM order label, image, label).
+   As HeroImageReveal widens the image the columns widen with it, so the labels spread to its edges */
+@media (max-width: 991px) {
+    .hero-image-wrapper {
+        display: grid;
+        grid-template-columns: auto auto;
+        justify-content: center;
+        align-content: center;
+    }
+
+    .hero-image-wrapper .hero__img {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        /* While it's narrower than the two labels, stay centered over them */
+        justify-self: center;
+    }
+
+    .hero-image-wrapper .hero__img ~ .hero_feature-label {
+        justify-self: end;
+        text-align: right;
+    }
+}
+
 
 /* Scroll Arrow — ScrollArrow.js wraps the svg + a clone (one height above) in a track,
    CSS drops the track one height and holds; at loop restart the clone sits exactly
