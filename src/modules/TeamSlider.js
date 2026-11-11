@@ -19,6 +19,8 @@ import { SignatureDraw } from './SignatureDraw'
 //The name lives in .team_nav-spacer, under the central photo — placed by Webflow, not here.
 //Each person's content lives on their pool image (.casepage_gallery-images):
 //  data-name ("|" = line break), data-role, data-quote, data-description, data-sign (SVG URL)
+//Desktop / mobile copies (e.g. .team_role-text and .team_role-text.is-mobile): only the rendered
+//one is driven — anything display: none at load (the ≤991 info panel) is left alone.
 
 const SYNC_SELECTOR = '.team_slider-sync'
 const STAGE_SELECTOR = '[data-gallery="root"]'
@@ -70,8 +72,8 @@ export class TeamSlider extends Module {
 
         this.texts = TEXT_FIELDS
             .map(({ key, selector }) => {
-                let element = key === 'number' ? numberElement : this.sync.querySelector(selector)
-                if (!element) return null
+                let element = key === 'number' ? numberElement : this.firstRendered(selector)
+                if (!element || !this.isRendered(element)) return null
                 return { key, element, reveal: this.createReveal(element) }
             })
             .filter(Boolean)
@@ -79,7 +81,7 @@ export class TeamSlider extends Module {
         //Static labels ("Должность", "№ •", "пара слов") — intro only
         let textElements = this.texts.map((text) => text.element)
         this.labels = [...this.sync.querySelectorAll(LABEL_SELECTOR)]
-            .filter((label) => !textElements.includes(label))
+            .filter((label) => !textElements.includes(label) && this.isRendered(label))
             .map((element) => ({ element, reveal: this.createReveal(element) }))
 
         //Inline SVG embed → draw; still the old <img> → blur swap
@@ -133,6 +135,15 @@ export class TeamSlider extends Module {
 
     createReveal(element) {
         return new SplitBlurReveal(element, { trigger: 'manual' }).mount()
+    }
+
+    //display: none (itself or an ancestor) has no boxes
+    isRendered(element) {
+        return element.getClientRects().length > 0
+    }
+
+    firstRendered(selector) {
+        return [...this.sync.querySelectorAll(selector)].find((element) => this.isRendered(element)) ?? null
     }
 
     onSettle(detail) {

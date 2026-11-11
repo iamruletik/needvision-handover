@@ -8,6 +8,7 @@ import { Module } from '../core/Module'
 //Optional per-element tuning in Webflow:
 //  data-marquee-speed="80"  — pixels per second (default below)
 //  data-marquee-reverse     — scrolls the other way
+//  data-marquee-media="(max-width: 991px)" — only runs when this matches
 
 const TARGET_SELECTOR = '.marquee-wrapper, .menu_marquee-wrapper, [data-marquee]'
 const DEFAULT_SPEED_PX_PER_SECOND = 50
@@ -21,6 +22,7 @@ export class Marquee extends Module {
 
     prepare(element) {
         if (element.dataset.marqueeReady) return
+        if (element.dataset.marqueeMedia && !window.matchMedia(element.dataset.marqueeMedia).matches) return
 
         element.innerHTML += element.innerHTML
 
@@ -39,10 +41,17 @@ export class Marquee extends Module {
     }
 
     start(element) {
+        this.writeDuration(element)
+        element.dataset.marqueeReady = 'true'
+
+        //Lazy images have no width until they load — speed stays right as the strip grows
+        this.observe(new ResizeObserver(() => this.writeDuration(element))).observe(element)
+    }
+
+    writeDuration(element) {
         let speed = parseFloat(element.dataset.marqueeSpeed) || DEFAULT_SPEED_PX_PER_SECOND
         let contentWidth = element.scrollWidth / 2
 
         element.style.setProperty('--marquee-duration', `${(contentWidth / speed).toFixed(2)}s`)
-        element.dataset.marqueeReady = 'true'
     }
 }

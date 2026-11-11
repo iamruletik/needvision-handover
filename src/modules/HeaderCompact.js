@@ -80,6 +80,13 @@ const LOGO_SMALL_CLASS = 'is-small'
 const FEATURE_COMPACT_CLASS = 'is-header-compact'
 const LINK_INVERTED_CLASS = 'is-inverted'
 export const TRANSITIONING_CLASS = 'is-header-transitioning' //on <html> while a compact / spread runs
+//Descriptor hidden by scroll / footer compact (not the intro hold, not kept pages) — its spot is
+//free for page elements to dock into (FloaterHeaderDock). Class on <html> + event on document.
+//Freed once the descriptor's lines are fully out, taken back the moment it starts showing.
+//Instant switches fire from inside setCompact: listeners measure after it (microtask).
+//detail: { isFree }
+export const DESCRIPTOR_SPACE_CLASS = 'is-descriptor-space-free'
+export const DESCRIPTOR_SPACE_EVENT = 'header-descriptor-space'
 const MENU_LINE_SELECTOR = '.menu-line-divider'
 
 //Menu Icon — the two lines cross into a close icon while the menu is open.
@@ -168,6 +175,7 @@ export class HeaderCompact extends Module {
         this.sideTween = null
         this.isSideHidden = false
         this.isDescriptorHidden = false //DescriptorReveal starts shown
+        this.isDescriptorSpaceFree = false
 
         //isAnimating — a compact/spread transition is running, menu clicks are ignored.
         //isMenuOpen — the menu's direction: true from the open click, false from the close click.
@@ -559,13 +567,31 @@ export class HeaderCompact extends Module {
     //DESCRIPTOR_KEPT_NAMESPACES, where it stays.
     //Held for the header intro — stays hidden, releaseIntro() syncs it
     syncDescriptor({ instant = false } = {}) {
-        if (this.isIntroHeld || !this.descriptorReveal) return
         let isKept = this.isPinnedCompact || DESCRIPTOR_KEPT_NAMESPACES.includes(this.namespace)
         let isHidden = this.isSideHidden && !isKept
+        //Space is taken back at once (a docked element may ask the descriptor to wait for it),
+        //freed at the hide's handoff point
+        let showDelay = isHidden ? 0 : this.announceDescriptorSpace(false, instant)
+        if (this.isIntroHeld || !this.descriptorReveal) {
+            if (isHidden) this.announceDescriptorSpace(true, instant)
+            return
+        }
         if (isHidden === this.isDescriptorHidden) return
         this.isDescriptorHidden = isHidden
-        if (isHidden) this.descriptorReveal.hide({ instant })
-        else this.descriptorReveal.show({ instant })
+        if (isHidden) this.descriptorReveal.hide({ instant, onHandoff: () => this.announceDescriptorSpace(true, instant) })
+        else this.descriptorReveal.show({ instant, delay: showDelay })
+    }
+
+    //Follows the compact state, not the intro hold — the space is free once the layout says so.
+    //instant: listeners jump instead of animating (pinned switches, page changes).
+    //Returns detail.showDelay — listeners leaving the space set it (seconds) synchronously
+    announceDescriptorSpace(isFree, instant) {
+        if (isFree === this.isDescriptorSpaceFree) return 0
+        this.isDescriptorSpaceFree = isFree
+        document.documentElement.classList.toggle(DESCRIPTOR_SPACE_CLASS, isFree)
+        let detail = { isFree, instant, showDelay: 0 }
+        document.dispatchEvent(new CustomEvent(DESCRIPTOR_SPACE_EVENT, { detail }))
+        return detail.showDelay
     }
 
     //Distance from the element's resting bottom edge to just past the viewport's top. The current
@@ -696,6 +722,8 @@ export class HeaderCompact extends Module {
         this.descriptorReveal = null
         this.isMenuOpen = false
         document.documentElement.classList.remove(TRANSITIONING_CLASS)
+        document.documentElement.classList.remove(DESCRIPTOR_SPACE_CLASS)
+        this.isDescriptorSpaceFree = false
 
         //Counter: live drums back to the Webflow text, then out of its mask
         this.profitCounter?.destroy()

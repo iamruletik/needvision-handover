@@ -13,6 +13,8 @@ import { SplitBlurReveal } from './SplitBlurReveal'
 //                 in MenuReveal) while .pre-footer-offset scrolls in, so the page content leaving
 //                 drags it open at whatever speed it's scrolled
 //  bottom row    — children fade in from below, staggered
+//  mobile        — .footer-mobile-text (SplitBlurReveal) and the left column's children (presentation
+//                 link, arrow) rising in after it. Only what's rendered at load: both are ≤991 copies
 //
 //Footer is position:fixed (content scrolls away to uncover it) — ScrollTrigger can't
 //measure a fixed element, so then the trigger is scroll-based: fires when the page is
@@ -33,6 +35,8 @@ const FORM_CARD_SELECTOR = '.contacts-form'
 const FORM_PART_SELECTOR = '.contacts-form-part'
 const BOTTOM_ROW_SELECTOR = '.footer_bottom-row'
 const LOCATION_GROUP_SELECTOR = '.footer_location-group'
+const MOBILE_TEXT_SELECTOR = '.footer-mobile-text'
+const COLUMN_ITEMS_SELECTOR = '.content-column-left.is-footer > *'
 
 //Trigger
 const FIXED_REVEAL_FRACTION = 0.5
@@ -84,12 +88,20 @@ const FIELD_CLIP_OPEN = 'inset(0% 0% 0% 0%)'
 const FADE_DURATION = 0.8
 const FADE_EASE = 'power2.out'
 
+//Mobile Left Column — fade + small rise, one after another
+const COLUMN_RISE_PX = 24
+const COLUMN_DURATION = 0.8
+const COLUMN_STAGGER = 0.15
+const COLUMN_EASE = 'power3.out'
+
 //Timeline Positions
 const AT_CTA = 0
 const AT_TIME = 0.1
 const AT_LOCATION_GROUP = 0.1
 const AT_MISSION = 0.2
 const AT_BOTTOM_ROW = 0.4
+const AT_MOBILE_TEXT = 0
+const AT_COLUMN = 0.3
 
 const TIME_MASK_CLASS = 'footer_time-mask'
 
@@ -110,6 +122,8 @@ export class FooterIntro extends Module {
         this.formFields = this.formCard ? [...this.formCard.querySelectorAll(FIELDS_SELECTOR)] : []
         this.locationGroup = this.footer.querySelector(LOCATION_GROUP_SELECTOR)
         this.bottomRow = this.footer.querySelector(BOTTOM_ROW_SELECTOR)
+        this.mobileTextReveal = this.createTextReveal(MOBILE_TEXT_SELECTOR, true)
+        this.columnItems = this.renderedOnly([...this.footer.querySelectorAll(COLUMN_ITEMS_SELECTOR)])
 
         this.isRevealed = false
         this.isInView = false
@@ -212,9 +226,15 @@ export class FooterIntro extends Module {
     }
 
     //Split now, parked hidden until tryPlay()
-    createTextReveal(selector) {
+    createTextReveal(selector, isRenderedOnly = false) {
         let elements = [...this.footer.querySelectorAll(selector)]
+        if (isRenderedOnly) elements = this.renderedOnly(elements)
         return elements.length ? new SplitBlurReveal(elements, { trigger: 'manual' }).mount() : null
+    }
+
+    //display: none (itself or an ancestor) has no boxes
+    renderedOnly(elements) {
+        return elements.filter((element) => element.getClientRects().length > 0)
     }
 
     //.timer-place may sit inside .footer_time-wrap — animate only the outer one
@@ -252,6 +272,7 @@ export class FooterIntro extends Module {
         if (this.formPart) gsap.set(this.formPart, { y: this.partStartY(), autoAlpha: 0 })
         let fadeElements = [this.locationGroup, this.bottomRow].filter(Boolean)
         if (fadeElements.length) gsap.set(fadeElements, { autoAlpha: 0 })
+        if (this.columnItems.length) gsap.set(this.columnItems, { y: COLUMN_RISE_PX, autoAlpha: 0 })
     }
 
     //Animations
@@ -282,6 +303,17 @@ export class FooterIntro extends Module {
         let fadeVars = { autoAlpha: 1, duration: FADE_DURATION, ease: FADE_EASE }
         if (this.locationGroup) timeline.to(this.locationGroup, fadeVars, AT_LOCATION_GROUP)
         if (this.bottomRow) timeline.to(this.bottomRow, fadeVars, AT_BOTTOM_ROW)
+
+        this.mobileTextReveal?.playIn(AT_MOBILE_TEXT)
+        if (this.columnItems.length) {
+            timeline.to(this.columnItems, {
+                y: 0,
+                autoAlpha: 1,
+                duration: COLUMN_DURATION,
+                stagger: COLUMN_STAGGER,
+                ease: COLUMN_EASE,
+            }, AT_COLUMN)
+        }
 
         this.animate(timeline)
     }
@@ -360,8 +392,10 @@ export class FooterIntro extends Module {
 
         this.ctaReveal?.destroy()
         this.missionReveal?.destroy()
+        this.mobileTextReveal?.destroy()
         this.ctaReveal = null
         this.missionReveal = null
+        this.mobileTextReveal = null
 
         this.timeMasks?.forEach((mask) => {
             let element = mask.firstElementChild
@@ -370,7 +404,7 @@ export class FooterIntro extends Module {
         })
         this.timeMasks = []
 
-        let animated = [...this.timeUnits, this.formCard, this.formWrap, this.formPart, ...(this.formFields ?? []), this.locationGroup, this.bottomRow].filter(Boolean)
+        let animated = [...this.timeUnits, this.formCard, this.formWrap, this.formPart, ...(this.formFields ?? []), ...(this.columnItems ?? []), this.locationGroup, this.bottomRow].filter(Boolean)
         if (animated.length) gsap.set(animated, { clearProps: 'transform,filter,opacity,visibility,clipPath' })
     }
 }

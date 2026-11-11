@@ -52,8 +52,9 @@ const IMAGE_PARALLAX_PERCENT = 6
 export class Stages extends Module {
 
     setup() {
-        this.section = document.querySelector('.stages')
-        if (!this.section) return
+        //Desktop section only — .stages.is-mobile has its own reveals (home.js), and ≤991 this one is display: none
+        this.section = document.querySelector('.stages:not(.is-mobile)')
+        if (!this.section || this.section.getClientRects().length === 0) return
 
         // this.buildBackgroundShift() //disabled — wrapper keeps its Webflow background
         this.buildImageReveals()

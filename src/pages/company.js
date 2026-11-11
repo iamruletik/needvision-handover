@@ -1,5 +1,5 @@
 import { Module } from '../core/Module'
-import { StepFloater } from './company/StepFloater'
+import { StepFloater } from '../modules/StepFloater'
 import { ImageSettle } from './company/ImageSettle'
 import { SplitBlurReveal } from '../modules/SplitBlurReveal'
 import { BlurFadeReveal } from './company/BlurFadeReveal'
@@ -10,6 +10,15 @@ import { ImageParallax } from './company/ImageParallax'
 import { StepsYearCounter } from './company/StepsYearCounter'
 import { HeaderColorZones } from './company/HeaderColorZones'
 
+//Step floater — section at viewport center → counter + name
+const FLOATER_STEPS = [
+    { section: '.companypage_hero', counter: '•', name: 'О компании' },
+    { section: '.companypage_tabs-section', counter: '1', name: 'Услуги' },
+    { section: '.companypage_steps-container', counter: '2', name: 'Как появились' },
+    { section: '.companypage_cards-wrapper', counter: '3', name: 'Кейсы' },
+]
+const FLOATER_HIDE_TRIGGER = '.companypage_cards-wrapper'
+
 //Company page — mounted only when the Barba namespace is "company"
 
 export class CompanyPage extends Module {
@@ -18,7 +27,7 @@ export class CompanyPage extends Module {
 
         this.children = [
             new HeaderColorZones(),
-            new StepFloater(),
+            new StepFloater(FLOATER_STEPS, { hideTrigger: FLOATER_HIDE_TRIGGER }),
             new ImageSettle(),
             new ImageParallax('.companypage_image-container-image', {
                 trigger: (image) => image.closest('.companypage_image'),

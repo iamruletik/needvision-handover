@@ -6,7 +6,9 @@ import { Module } from '../core/Module'
 //different slots are allowed — only a same-logo-to-same-slot no-op swap is not.
 //One fade timeline per slot and one pending batch call at a time — both replaced, never
 //accumulated, so a long visit doesn't grow anything; destroy() kills whatever is in flight.
+//Desktop only — ≤991 the row is a marquee instead (data-marquee in Webflow, Marquee.js).
 
+const SWAP_MEDIA = '(min-width: 992px)'
 const FADE_DURATION = 0.6
 const FADE_EASE = 'power1.inOut'
 const MIN_SWAP_COUNT = 3
@@ -18,7 +20,9 @@ const FIRST_SWAP_DELAY_SECONDS = 2
 export class LogoGridSwap extends Module {
 
     setup() {
-        this.visibleSlots = [...document.querySelectorAll('.logo-grid_img-visible')]
+        if (!window.matchMedia(SWAP_MEDIA).matches) return
+
+        this.visibleSlots =[...document.querySelectorAll('.logo-grid_img-visible')]
         let poolImages = [...document.querySelectorAll('.logo-hidden-pool .logo-grid_img')]
         if (this.visibleSlots.length === 0 || poolImages.length === 0) return
 

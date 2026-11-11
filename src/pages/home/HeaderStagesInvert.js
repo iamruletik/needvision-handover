@@ -18,7 +18,9 @@ const STAGES_COLOR = { color: 'var(--main-colours--black)', inverted: 'var(--mai
 export class HeaderStagesInvert extends Module {
 
     setup() {
-        let section = document.querySelector(SECTION_SELECTOR)
+        //Rendered one only — desktop / mobile versions, Webflow shows one per breakpoint
+        let section = [...document.querySelectorAll(SECTION_SELECTOR)]
+            .find((element) => element.getClientRects().length > 0)
         if (!section) return
         let endElement = document.querySelector(END_SELECTOR)
 

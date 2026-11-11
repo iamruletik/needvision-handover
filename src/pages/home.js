@@ -4,17 +4,54 @@ import { BentoStats } from './home/BentoStats'
 import { BentoGraph } from './home/BentoGraph'
 import { PartnerReveal } from './home/PartnerReveal'
 import { HeaderStagesInvert } from './home/HeaderStagesInvert'
+import { StagesBackgroundReveal } from './home/StagesBackgroundReveal'
 import { SplitBlurReveal } from '../modules/SplitBlurReveal'
+import { LoopSlider } from '../modules/LoopSlider'
 import { FadeMoveReveal } from './contacts/FadeMoveReveal'
+import { StepFloater } from '../modules/StepFloater'
+import { SceneScrollTimeline } from './home/SceneScrollTimeline'
 
 //Manifesto lead text rises word by word — ~30 words, so a tight stagger
 const MANIFESTO_WORD_STAGGER = 0.03
+//Desktop / mobile versions of the lead — Webflow shows one per breakpoint
+const MANIFESTO_LEAD_SELECTOR = '.manifesto_lead-text, .manifesto-mobile-header'
+//Lead reveal point — the 3D video is near its end here (SceneScrollTimeline)
+const MANIFESTO_LEAD_START = 'top 90%'
+//Mobile stages — four static cards (desktop swaps one card's text, Stages.js)
+const STAGES_MOBILE_TEXT_SELECTOR = [
+    '.stages.is-mobile .stages_step-label',
+    '.stages.is-mobile .stages_title',
+    '.stages.is-mobile .stages_subtitle',
+    '.stages.is-mobile .stages_p-text',
+].join(', ')
+const STAGES_MOBILE_MEDIA = '(max-width: 991px)'
+//Step floater — section at viewport center → counter + name; hidden steps fade it out.
+//.stages resolves to the rendered copy (desktop / mobile)
+const FLOATER_STEPS = [
+    { section: '.hero', hidden: true },
+    { section: '.manifesto', counter: '1', name: 'Манифест' },
+    { section: '.section-logo', counter: '2', name: 'Партнёры' },
+    { section: '.section-cases', counter: '3', name: 'Кейсы' },
+    { section: '.partner', hidden: true },
+    { section: '.stages', counter: '4', name: 'Процесс' },
+    { section: '.team', counter: '5', name: 'Команда' },
+]
+//Hidden once half the footer is uncovered — the spacer's middle reaches the viewport bottom.
+//Not 'bottom bottom': the spacer ends the page, so that point is max scroll and may never be hit
+const FLOATER_HIDE_TRIGGER = '.pre-footer-offset'
+const FLOATER_HIDE_START = 'center bottom'
 
 //Home page — mounted only when the Barba namespace is "home"
 
 export class HomePage extends Module {
 
     setup() {
+
+        //Only the rendered version — a display: none element can't be split or triggered properly
+        let manifestoLead = [...document.querySelectorAll(MANIFESTO_LEAD_SELECTOR)]
+            .filter((element) => element.getClientRects().length > 0)
+        let stagesMobileText = [...document.querySelectorAll(STAGES_MOBILE_TEXT_SELECTOR)]
+            .filter((element) => element.getClientRects().length > 0)
 
         this.children = [
             new HeroReveal(),
@@ -27,7 +64,9 @@ export class HomePage extends Module {
             }),
             //Manifesto — lead text (sticky header) and body paragraph, each on its own scroll trigger.
             //Lead lines are Webflow spans with padding-left indents, one span per line
-            new SplitBlurReveal('.manifesto_lead-text', { by: 'words', stagger: MANIFESTO_WORD_STAGGER }),
+            new SplitBlurReveal(manifestoLead, { by: 'words', stagger: MANIFESTO_WORD_STAGGER, start: MANIFESTO_LEAD_START }),
+            //3D scene progress from the sections — video starts with the hero image, nearly done at the manifesto
+            new SceneScrollTimeline({ manifestoLead: manifestoLead[0], manifestoStart: MANIFESTO_LEAD_START }),
             new SplitBlurReveal('.manifesto_p-text'),
             new FadeMoveReveal('.manifesto_action', { offsetY: 0 }),
             //Logo section — the huge statement, the paragraph under it (markers: SectionMarkerReveal)
@@ -36,6 +75,11 @@ export class HomePage extends Module {
             new FadeMoveReveal('.section-logo .button-grey', { offsetY: 0 }),
             new PartnerReveal(),
             new HeaderStagesInvert(),
+            new StagesBackgroundReveal(),
+            //Mobile stages — each card's text on its own scroll, cascading top to bottom; image row swipes
+            new SplitBlurReveal(stagesMobileText),
+            new LoopSlider('.stage-slider-mobile', { media: STAGES_MOBILE_MEDIA }),
+            new StepFloater(FLOATER_STEPS, { hideTrigger: FLOATER_HIDE_TRIGGER, hideStart: FLOATER_HIDE_START }),
         ].map((child) => child.mount())
     }
 

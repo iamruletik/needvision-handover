@@ -211,6 +211,28 @@
     }
 }
 
+/* Hero Wrapper Padding — ≤991: clears the fixed header on top and the floating button at the
+   bottom. Both heights are measured: HeaderHeight.js, FloatingButtonReveal.js */
+@media (max-width: 991px) {
+    .hero_wrapper {
+        padding-top: calc(var(--layout--header-height) + 3rem);
+        padding-bottom: calc(var(--layout--floating-button-space, 0px) + 1rem);
+    }
+}
+
+/* Cases Container — ≤991: same clearances as the hero. The track sits at the container's bottom,
+   so the drag tag rests 1rem above the cards: bottom padding + their distance from the track's
+   bottom (measured: CasesSlider.js) */
+@media (max-width: 991px) {
+    .cases-container {
+        padding-top: calc(var(--layout--header-height) + 3rem);
+        padding-bottom: calc(var(--layout--floating-button-space, 0px) + 1rem);
+    }
+    .case_slider-tag {
+        bottom: calc(var(--layout--floating-button-space, 0px) + 1rem + var(--cases-cards-space, 0px) + 1rem);
+    }
+}
+
 /* Hero Image Stacked — ≤991: labels under the image instead of beside it. Two auto columns, the
    image spans both on row 1, the labels auto-place into row 2 (DOM order label, image, label).
    As HeroImageReveal widens the image the columns widen with it, so the labels spread to its edges */
@@ -1018,6 +1040,13 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
             rgba(0, 0, 0, 1) 88%);
 }
 
+/* ≤991: no cursor to follow — stays centered, wide enough that only the section's edges darken */
+@media (max-width: 991px) {
+    .spotlight-overlay {
+        --spotlight-size: 100vh;
+    }
+}
+
 
 /* Cases Slider — pointer cursor on card content, drag-zone parent has grab */
 .case_card-content,
@@ -1145,6 +1174,27 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     pointer-events: none;
 }
 
+/* Bento Flip Clock ≤991 — rem, matching the Webflow medium values (1vw on desktop = 0.9rem) */
+@media (max-width: 991px) {
+    .bento-flip__flaps {
+        perspective: 43.74rem;
+    }
+    .bento-flip__half.is-top {
+        border-radius: 0.75rem 0.75rem 0 0;
+    }
+    .bento-flip__half.is-bottom {
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
+    .bento-flip__half.is-flap {
+        box-shadow: 0 0.873rem 1.377rem rgba(0, 0, 0, 0.18);
+    }
+    .bento_value-wrapper.is-flip-clock::after {
+        left: 0.375rem;
+        top: calc(3.59375rem - 0.0625rem); /* half a digit card (7.1875rem) minus half the line */
+        height: 0.125rem;
+    }
+}
+
 /* Bento Controls — active dot filled, back arrow hidden on the first state */
 .bento_slider-controls .stages_dot-full {
     transition: opacity 0.3s ease;
@@ -1166,6 +1216,21 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     max-width: 100%;
     word-break: break-word;
     overflow-wrap: anywhere;
+}
+
+/* Stages Mobile Slider — LoopSlider.js takes horizontal drags, the browser keeps vertical scroll.
+   Images: no native drag ghost, no iOS long-press callout mid-swipe */
+@media (max-width: 991px) {
+    .stage-slider-mobile {
+        touch-action: pan-y;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    .stage-mobile-slide {
+        -webkit-user-drag: none;
+        -webkit-touch-callout: none;
+        will-change: transform;
+    }
 }
 
 

@@ -9,6 +9,10 @@ import type { IWorld } from './types';
 
 // Fired on document by the host site when its page becomes visible (see #startRevealWhenSiteVisible)
 const SITE_REVEALED_EVENT = 'site-revealed';
+// Fired on document by the host site with { progress } (0..1) — scene progress mapped from its own
+// section anchors (needvision SceneScrollTimeline.js). Once one arrives, the motion scroll() over
+// .js-canvas-container is ignored until the page is unbound; without it, motion drives as before
+const HOST_SCROLL_PROGRESS_EVENT = 'scene-scroll-progress';
 
 class Experience {
     canvasParent: HTMLElement | null;
@@ -17,6 +21,7 @@ class Experience {
     private revealWaitCleanup?: () => void;
 
     private targetScrollProgress = 0;
+    private isHostDriven = false;
 
     private rafId = 0;
     private revealAnimRafId = 0;
@@ -33,6 +38,7 @@ class Experience {
     constructor(canvas: HTMLCanvasElement) {
         this.onPointermove = this.onPointermove.bind(this);
         this.onPointerdown = this.onPointerdown.bind(this);
+        this.onHostScrollProgress = this.onHostScrollProgress.bind(this);
 
         this.canvasParent = canvas.parentElement;
         // DEBUG TOOLS DISABLED — ?debug only forced the main thread so the tweakpane panel could
@@ -96,12 +102,14 @@ class Experience {
 
         this.scrollCleanup?.();
         this.scrollCleanup = undefined;
+        this.isHostDriven = false;
         this.revealWaitCleanup?.();
         this.revealWaitCleanup = undefined;
         this.debouncedOnWindowResize.cancel();
         window.removeEventListener('resize', this.debouncedOnWindowResize);
         document.removeEventListener('pointermove', this.onPointermove);
         document.removeEventListener('pointerdown', this.onPointerdown);
+        document.removeEventListener(HOST_SCROLL_PROGRESS_EVENT, this.onHostScrollProgress);
         unregisterWorldForHeaderLogo();
     }
 
@@ -140,8 +148,23 @@ class Experience {
     }
 
     #onScrollFromMotion = (progress: number, _info: unknown) => {
+        if (this.isHostDriven) {
+            return;
+        }
+
         this.targetScrollProgress = progress;
     };
+
+    private onHostScrollProgress(event: Event) {
+        const progress = (event as CustomEvent<{ progress?: number }>).detail?.progress;
+
+        if (typeof progress !== 'number' || !Number.isFinite(progress)) {
+            return;
+        }
+
+        this.isHostDriven = true;
+        this.targetScrollProgress = Math.min(1, Math.max(0, progress));
+    }
 
     // The host site (needvision bundle) keeps html[data-site-revealed] = "false" while its
     // preloader / page transition covers the screen, flips it to "true" and fires
@@ -227,6 +250,7 @@ class Experience {
         window.addEventListener('resize', this.debouncedOnWindowResize);
         document.addEventListener('pointermove', this.onPointermove);
         document.addEventListener('pointerdown', this.onPointerdown);
+        document.addEventListener(HOST_SCROLL_PROGRESS_EVENT, this.onHostScrollProgress);
     }
 
     dispose() {

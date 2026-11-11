@@ -16,8 +16,10 @@ const STACKED_GUTTER_REM = 1
 const REVEAL_DURATION = 1.4
 const REVEAL_EASE = 'power2.out'
 //Wrapper, not .hero-image — the section is 1400px tall with heavy padding,
-//its center lands far below the image's actual center
-const TRIGGER_START = 'center center'
+//its center lands far below the image's actual center.
+//Exported — the 3D video starts at this same point (SceneScrollTimeline)
+export const HERO_IMAGE_TRIGGER_SELECTOR = '.hero-image-wrapper'
+export const HERO_IMAGE_TRIGGER_START = 'center center'
 
 export class HeroImageReveal extends Module {
 
@@ -25,7 +27,7 @@ export class HeroImageReveal extends Module {
         this.image = document.querySelector('.hero__img')
         if (!this.image) return
 
-        let triggerElement = document.querySelector('.hero-image-wrapper') || document.querySelector('.hero-image')
+        let triggerElement = document.querySelector(HERO_IMAGE_TRIGGER_SELECTOR) || document.querySelector('.hero-image')
         if (!triggerElement) return
 
         this.stackedMedia = window.matchMedia(STACKED_MEDIA)
@@ -38,7 +40,7 @@ export class HeroImageReveal extends Module {
             ease: REVEAL_EASE,
             scrollTrigger: {
                 trigger: triggerElement,
-                start: TRIGGER_START,
+                start: HERO_IMAGE_TRIGGER_START,
                 toggleActions: 'play none none none',
                 invalidateOnRefresh: true,
             },

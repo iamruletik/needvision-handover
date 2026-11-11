@@ -5,8 +5,11 @@ import { Module } from '../core/Module'
 //rises to its Webflow position once the preloader / eye transition is done.
 //Distance is measured, so the pill starts fully off screen whatever its size or bottom margin.
 //Any page with the component gets it; pages without it skip silently.
+//Also keeps the room the pill takes at the viewport bottom (its height + bottom margin) on <body>
+//as --layout--floating-button-space, for sections that clear it (main.css "Hero Wrapper Padding").
 
 const CONTENT_SELECTOR = '.floating-button-content'
+const SPACE_PROPERTY = '--layout--floating-button-space'
 
 const REVEAL_DELAY = 0.2
 const REVEAL_DURATION = 1.2
@@ -20,6 +23,11 @@ export class FloatingButtonReveal extends Module {
 
         this.isRevealed = false
         this.contents.forEach((content) => gsap.set(content, { y: this.offscreenDistance(content) }))
+
+        this.writeSpace()
+        if ('ResizeObserver' in window) {
+            this.observe(new ResizeObserver(() => this.writeSpace())).observe(this.contents[0])
+        }
     }
 
     //Called once the screen is visible
@@ -30,6 +38,13 @@ export class FloatingButtonReveal extends Module {
     }
 
     //Helpers
+
+    //offsetHeight — layout height, unaffected by the parked y offset
+    writeSpace() {
+        let content = this.contents[0]
+        let bottomMargin = parseFloat(getComputedStyle(content).marginBottom) || 0
+        document.body.style.setProperty(SPACE_PROPERTY, `${content.offsetHeight + bottomMargin}px`)
+    }
 
     //From its resting top edge to just past the viewport bottom
     offscreenDistance(content) {
@@ -52,6 +67,7 @@ export class FloatingButtonReveal extends Module {
     destroy() {
         super.destroy()
         if (this.contents?.length) gsap.set(this.contents, { clearProps: 'transform' })
+        document.body.style.removeProperty(SPACE_PROPERTY)
         this.contents = []
     }
 }

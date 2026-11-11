@@ -5,7 +5,9 @@ import { Module } from '../core/Module'
 //  1. Cursor lantern — GSAP drives --mouse-x/--mouse-y CSS vars, gradient lives in CSS
 //  2. Background layer fades out as the section leaves the viewport
 //  3. Background text drifts slightly slower than the scroll (parallax)
+//≤991 the lantern stays centered — a tap fires mousemove too, so the listener isn't bound there
 
+const LANTERN_MEDIA = '(min-width: 992px)'
 const LANTERN_FOLLOW_DURATION = 1.8
 //Fraction of scroll speed the background text lags behind (0.05 = 5% slower)
 const TEXT_PARALLAX_RATIO = 0.05
@@ -23,6 +25,8 @@ export class PartnerSpotlight extends Module {
     }
 
     bindLantern() {
+        if (!window.matchMedia(LANTERN_MEDIA).matches) return
+
         this.listen(this.section, 'mousemove', (event) => {
             let rect = this.section.getBoundingClientRect()
 

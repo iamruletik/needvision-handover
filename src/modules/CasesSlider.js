@@ -13,6 +13,10 @@ import { CasesIntro } from './CasesIntro'
 
 //Step = card content width (24vw) + line gap (1vw)
 const SLIDE_STEP_VW = 25
+//≤991 the card is calc() wide in Webflow and GSAP can't tween to calc() — the step is measured
+const MEASURED_STEP_MEDIA = '(max-width: 991px)'
+//Read by main.css "Cases Container" to place .case_slider-tag above the cards
+const CARDS_SPACE_PROPERTY = '--cases-cards-space'
 const TRACK_DURATION = 0.8
 const CONTENT_DURATION = 0.4
 const HOVER_DURATION = 0.4
@@ -42,6 +46,7 @@ export class CasesSlider extends Module {
 
         this.totalSlides = this.slides.length
         this.activeIndex = 0
+        this.measuredStepMedia = window.matchMedia(MEASURED_STEP_MEDIA)
 
         this.syncDotCount()
         this.dots = [...document.querySelectorAll('.cases_slider-dot')]
@@ -65,11 +70,32 @@ export class CasesSlider extends Module {
         }
 
         this.update(0)
+
+        //Rotation / resize — keeps the active card in place at the new card width
+        this.observe(new ResizeObserver(() => {
+            gsap.set(this.cardsLine, { x: this.lineOffset(this.activeIndex), overwrite: 'auto' })
+        })).observe(this.cardsLine)
+
+        this.bindCardsSpace()
     }
 
     //Called once the screen is visible
     reveal() {
         this.intro?.reveal()
+    }
+
+    //Top of the cards to the track's bottom. On the container, so it leaves with the page on a Barba swap.
+    //offsetTop is relative to the track (position: relative) and ignores the line's x
+    bindCardsSpace() {
+        let container = this.cardsLine.closest('.cases-container')
+        let track = this.cardsLine.closest('.cases_slider-track')
+        if (!container || !track) return
+
+        let writeCardsSpace = () => {
+            container.style.setProperty(CARDS_SPACE_PROPERTY, `${track.offsetHeight - this.cardsLine.offsetTop}px`)
+        }
+        writeCardsSpace()
+        this.observe(new ResizeObserver(writeCardsSpace)).observe(track)
     }
 
     //Webflow usually has a static dot count — remove extras, clone missing from the first
@@ -285,6 +311,13 @@ export class CasesSlider extends Module {
 
     //State
 
+    //offsetLeft — layout position, unaffected by the line's x and the intro's card transforms
+    lineOffset(index) {
+        if (!this.measuredStepMedia.matches) return `-${index * SLIDE_STEP_VW}vw`
+        let step = (this.slides[1]?.offsetLeft ?? 0) - this.slides[0].offsetLeft
+        return -index * step
+    }
+
     next() {
         if (this.activeIndex < this.totalSlides - 1) this.update(this.activeIndex + 1)
     }
@@ -298,7 +331,7 @@ export class CasesSlider extends Module {
 
         //Move the line, not the track — the tag lives in the wrapper above the line
         this.animate(gsap.to(this.cardsLine, {
-            x: `-${index * SLIDE_STEP_VW}vw`,
+            x: this.lineOffset(index),
             duration: TRACK_DURATION,
             ease: 'power2.inOut',
             overwrite: 'auto',

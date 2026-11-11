@@ -12,6 +12,10 @@ import { Module } from '../core/Module'
 //  data-start-y / data-start-x / data-start-rot — where the card flies in from
 //  data-end-y                                   — where it exits to
 //  data-enter-delay / data-exit-delay           — extra timeline-unit delays
+//
+//≤991 the grid is taller than the screen, so a shared timeline plays while lower cards are off
+//screen. Each card drifts on its own scrub instead, across its own trip through the viewport,
+//from data-start-y to data-end-y × mobileMoveScale. No scatter, fade or delays there.
 
 const CONFIG = {
     //Phase proportions in timeline units (fractions of one scroll distance, not seconds)
@@ -48,6 +52,13 @@ const CONFIG = {
 
     enterEase: 'power2.out',
     exitEase: 'power2.in',
+
+    //≤991: the card's travel distances are multiplied by this
+    mobileMedia: '(max-width: 991px)',
+    mobileMoveScale: 0.2,
+    mobileScrub: 0.5,
+    mobileStart: 'top bottom',
+    mobileEnd: 'bottom top',
 }
 
 export class BentoParallax extends Module {
@@ -56,6 +67,11 @@ export class BentoParallax extends Module {
         this.cards = [...document.querySelectorAll('.bento_card.is-parallax')]
         this.stickySection = document.querySelector('.parallax-sticky')
         if (this.cards.length === 0 || !this.stickySection) return
+
+        if (window.matchMedia(CONFIG.mobileMedia).matches) {
+            this.buildMobileDrift()
+            return
+        }
 
         //scrub 0.5 for stability, invalidateOnRefresh false — refresh recalcs
         //fromTo start values and opacity blinks
@@ -162,5 +178,42 @@ export class BentoParallax extends Module {
                 this.exitStart + exitDelay
             )
         })
+    }
+
+    //Mobile — One Scrub Per Card
+
+    buildMobileDrift() {
+        this.cards.forEach((card, index) => {
+            //is-desktop duplicate is display: none at this width — no position to trigger from
+            if (card.getClientRects().length === 0) return
+
+            let pattern = CONFIG.scatterPattern[index % CONFIG.scatterPattern.length]
+            let startY = this.scaleMove(card.getAttribute('data-start-y') || pattern.y)
+            let endY = this.scaleMove(card.getAttribute('data-end-y') || CONFIG.exitY)
+
+            this.animate(gsap.fromTo(card,
+                { y: startY },
+                {
+                    y: endY,
+                    ease: 'none',
+                    force3D: true,
+                    scrollTrigger: {
+                        trigger: card,
+                        start: CONFIG.mobileStart,
+                        end: CONFIG.mobileEnd,
+                        scrub: CONFIG.mobileScrub,
+                    },
+                }
+            ))
+        })
+    }
+
+    //Helpers
+
+    //Keeps the unit — attributes are unitless px ("400"), the config is vw
+    scaleMove(value) {
+        let number = parseFloat(value)
+        if (Number.isNaN(number)) return value
+        return `${number * CONFIG.mobileMoveScale}${gsap.utils.getUnit(value)}`
     }
 }
