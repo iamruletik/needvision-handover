@@ -2,14 +2,13 @@ import { ScrollTrigger } from '../../core/gsap'
 import { Module } from '../../core/Module'
 import { COLOR_ZONE_TARGETS, setZoneColor, clearZoneColor } from '../../modules/colorZoneTargets'
 
-//Company page color follows whichever section sits under each target — the header near the top,
-//the floating CTA at the bottom, each at its own line (colorZoneTargets.js), so the two switch
-//independently. Entering a zone from either direction sets that target's variable pair inline on
-//<html>, overriding the per-page :has() rule in main.css. destroy() removes them, so other
+//Company page header color follows whichever section sits under its line (colorZoneTargets.js;
+//the floating CTA is always orange). Entering a zone from either direction sets the variable pair
+//inline on <body>, overriding the per-page :has() rule in main.css. destroy() removes it, so other
 //pages fall back to their CSS colors.
 //Over the footer: FooterHeaderColor.js (all pages) overrides with orange.
 
-//Each color comes with its opposite for the inverted variable (pill text, menu, CTA fill)
+//Each color comes with its opposite for the inverted variable (pill text, menu)
 const BLACK = { color: 'var(--main-colours--black)', inverted: 'var(--main-colours--white)' }
 const WHITE = { color: 'var(--main-colours--white)', inverted: 'var(--main-colours--black)' }
 

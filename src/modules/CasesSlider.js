@@ -22,6 +22,9 @@ const CONTENT_DURATION = 0.4
 const HOVER_DURATION = 0.4
 const BACKGROUND_DURATION = 0.8
 const DOT_DURATION = 0.4
+//On the active .case_card — main.css "Cases Slider Links" lets only its link take clicks;
+//on an idle card the click falls through to the card and selects it
+const ACTIVE_CARD_CLASS = 'is-case-active'
 const DRAG_MINIMUM = 10
 const DRAG_TOLERANCE = 20
 
@@ -223,6 +226,20 @@ export class CasesSlider extends Module {
         dragZone.style.webkitUserSelect = 'none'
 
         let didStep = false
+        let didDrag = false
+
+        //Card links — the browser's native link drag (ghost + URL popover) swallows the pointer
+        //stream, so it's cancelled; a drag that ends on a link must not open it either.
+        //Both targets: the link may sit in the line above the zone, outside its bubbling path
+        let guardTargets = [...new Set([dragZone, this.cardsLine])]
+        guardTargets.forEach((target) => {
+            this.listen(target, 'dragstart', (event) => event.preventDefault())
+            this.listen(target, 'click', (event) => {
+                if (!didDrag) return
+                event.preventDefault()
+                event.stopPropagation()
+            }, { capture: true })
+        })
 
         this.animate(Observer.create({
             target: dragZone,
@@ -232,6 +249,10 @@ export class CasesSlider extends Module {
             onPress: () => {
                 dragZone.style.cursor = 'grabbing'
                 didStep = false
+                didDrag = false
+            },
+            onDragStart: () => {
+                didDrag = true
             },
             onRelease: () => {
                 dragZone.style.cursor = 'grab'
@@ -363,6 +384,7 @@ export class CasesSlider extends Module {
             let content = slide.querySelector('.case_card-content')
             let logo = slide.querySelector('.case_client-logo')
             let isActive = slideIndex === index
+            slide.classList.toggle(ACTIVE_CARD_CLASS, isActive)
             if (!content) return
 
             gsap.to(content, {

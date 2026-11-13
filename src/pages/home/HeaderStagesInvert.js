@@ -2,7 +2,7 @@ import { ScrollTrigger } from '../../core/gsap'
 import { Module } from '../../core/Module'
 import { COLOR_ZONE_TARGETS, setZoneColor, clearZoneColor } from '../../modules/colorZoneTargets'
 
-//Home header — and, separately, the floating CTA at the bottom — go black from .stages until the
+//Home header goes black from .stages until the
 //footer. Same mechanism as the company page's HeaderColorZones: each target's variable pair set
 //inline on <html> while the zone spans that target's line (colorZoneTargets.js). Leaving the zone
 //either way removes the pair, so the home CSS rule (white, main.css "Header Color per Page")

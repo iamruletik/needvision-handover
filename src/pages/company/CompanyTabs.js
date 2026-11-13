@@ -44,6 +44,12 @@ const INTRO_TEXT_DELAY = 0.1
 
 const DESCRIPTION_DELAY = 0.1 //description trails the heading, in and out
 
+//Counter — "01 // 11": active tab's position of the total, switches with the buttons.
+//Hidden ≤991 in Webflow
+const COUNTER_SELECTOR = '.companypage_tabs-index-text'
+const COUNTER_PAD = 2
+const COUNTER_SEPARATOR = ' // '
+
 export class CompanyTabs extends Module {
 
     setup() {
@@ -66,7 +72,9 @@ export class CompanyTabs extends Module {
         if (this.images.length) gsap.set(this.images, { yPercent: 100 })
         if (this.activeImage) gsap.set(this.activeImage, { yPercent: 0 })
 
-        this.originalTexts = { heading: this.heading.innerHTML, description: this.description.innerHTML }
+        this.counter = this.section.querySelector(COUNTER_SELECTOR)
+        this.originalTexts = { heading: this.heading.innerHTML, description: this.description.innerHTML, counter: this.counter?.textContent }
+        this.updateCounter()
         this.isRevealed = false
         this.isInView = false
         this.hasIntroPlayed = false
@@ -115,11 +123,18 @@ export class CompanyTabs extends Module {
             item.setAttribute('aria-pressed', isActive ? 'true' : 'false')
         })
         this.activeButton = button
+        this.updateCounter()
 
         if (!this.isAnimating) this.playSwap()
     }
 
     //Helpers
+
+    updateCounter() {
+        if (!this.counter) return
+        let position = String(this.buttons.indexOf(this.activeButton) + 1).padStart(COUNTER_PAD, '0')
+        this.counter.textContent = `${position}${COUNTER_SEPARATOR}${this.buttons.length}`
+    }
 
     textReveals() {
         return [this.headingReveal, this.descriptionReveal]
@@ -221,6 +236,7 @@ export class CompanyTabs extends Module {
         if (this.originalTexts) {
             this.heading.innerHTML = this.originalTexts.heading
             this.description.innerHTML = this.originalTexts.description
+            if (this.counter && this.originalTexts.counter !== undefined) this.counter.textContent = this.originalTexts.counter
         }
     }
 }

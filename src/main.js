@@ -40,6 +40,7 @@ import { ArrowDownloadIcon } from './modules/ArrowDownloadIcon'
 import { ProgressiveBlur } from './modules/ProgressiveBlur'
 import { FloatingButtonReveal } from './modules/FloatingButtonReveal'
 import { FooterCtaMorph } from './modules/FooterCtaMorph'
+import { FloatingCtaFooterJump } from './modules/FloatingCtaFooterJump'
 import { SectionMarkerReveal } from './modules/SectionMarkerReveal'
 import { HomePage } from './pages/home'
 import { CasesPageScript } from './pages/cases'
@@ -63,6 +64,7 @@ const casesLinkArrow = new IconRoll('#header-cases-link .arrow-line', 'header-ar
 const logoArc = new LogoArc().mount() //arc above the logo dot, leans toward the mouse
 const headerReveal = new HeaderReveal(headerCompact).mount() //header intro, first reveal only — after HeaderCompact strips the mirrors
 new LayoutRefresh().mount() //lazy images grow the page after a refresh — re-measures the triggers
+new FloatingCtaFooterJump(smoothScroll, eyeTransition, headerCompact).mount() //floating CTA → footer behind an eye blink
 
 //Page Modules — destroyed and rebuilt on every Barba transition.
 //Each receives smoothScroll (most ignore it); each skips silently when its elements are missing.

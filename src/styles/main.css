@@ -633,31 +633,24 @@
    :has() — Safari 15.4+, older browsers keep the default */
 html:has([data-barba-namespace="home"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
-    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
 }
 html:has([data-barba-namespace="privacy"]) body {
     --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
-    --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
 }
 html:has([data-barba-namespace="contacts"]) body {
     --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black);
-    --floating-cta--header-color: var(--main-colours--orange); --floating-cta--small-header-color: var(--main-colours--black);
 }
 html:has([data-barba-namespace="cases"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
-    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
 }
 html:has([data-barba-namespace="company"]) body {
     --main-colours--header-color: var(--main-colours--ink); --main-colours--small-header-color: var(--main-colours--white);
-    --floating-cta--header-color: var(--main-colours--ink); --floating-cta--small-header-color: var(--main-colours--white);
 }
 html:has([data-barba-namespace="case-study"]) body {
     --main-colours--header-color: var(--main-colours--white); --main-colours--small-header-color: var(--main-colours--black);
-    --floating-cta--header-color: var(--main-colours--white); --floating-cta--small-header-color: var(--main-colours--black);
 }
 html:has([data-barba-namespace="404"]) body {
     --main-colours--header-color: var(--main-colours--orange); --main-colours--small-header-color: var(--main-colours--black);
-    --floating-cta--header-color: var(--main-colours--orange); --floating-cta--small-header-color: var(--main-colours--black);
 }
 
 /* Money Counter on Orange — the menu's label pill and small number go dark red wherever the
@@ -674,30 +667,31 @@ html.is-footer-under-header .money-counter-small-number {
     color: #792B17;
 }
 
-/* Floating CTA colors — its own pair, so it doesn't flip when the header crosses a section (the
-   header is at the top, the button at the bottom: they cross sections at different times).
-   Inside the floating button the header variables are re-pointed at the pair, so the shared
-   call-to-action component stays as is in Webflow (the menu's copy keeps following the header).
-   The color-zone modules switch the pair at the button's own line (colorZoneTargets.js).
-   The morph stand-in (FooterCtaMorph.js, on <body>) carries copies of the CTA's content, so it
-   gets the same re-pointing — otherwise its copies would take the header's colors.
-   No page match = Webflow's header defaults */
+/* Floating CTA colors — always orange with black, on every page and section. Inside the floating
+   button the header variables are pinned, so the shared call-to-action component stays as is in
+   Webflow (the menu's copy keeps following the header). The morph stand-in (FooterCtaMorph.js,
+   on <body>) carries copies of the CTA's content, so it gets the same pin.
+   Hover inverts: black fill, orange content (the generic hover above fills orange) */
 .floating-button-wrapper,
 .footer-cta-morph {
-    --main-colours--header-color: var(--floating-cta--header-color, var(--main-colours--white));
-    --main-colours--small-header-color: var(--floating-cta--small-header-color, #040101);
+    --main-colours--header-color: var(--main-colours--orange);
+    --main-colours--small-header-color: var(--main-colours--black);
+}
+@media (hover: hover) {
+    .floating-button-wrapper .call-to-action:hover {
+        --main-colours--header-color: var(--main-colours--black);
+        --main-colours--small-header-color: var(--main-colours--orange);
+        color: var(--main-colours--orange);
+        background-color: var(--main-colours--black);
+    }
 }
 
-/* Footer Zone Color — orange over the footer on every page (FooterHeaderColor.js toggles the class
-   per target). On body like the rest; !important beats the per-page :has() rules and the zone
-   modules' inline pairs */
+/* Footer Zone Color — header goes orange over the footer on every page (FooterHeaderColor.js
+   toggles the class). On body like the rest; !important beats the per-page :has() rules and
+   the zone modules' inline pairs */
 html.is-footer-under-header body {
     --main-colours--header-color: var(--main-colours--orange) !important;
     --main-colours--small-header-color: var(--main-colours--black) !important;
-}
-html.is-footer-under-floating-cta body {
-    --floating-cta--header-color: var(--main-colours--orange) !important;
-    --floating-cta--small-header-color: var(--main-colours--black) !important;
 }
 
 /* Footer Interactive Image — company and 404 only. Hidden everywhere else; FooterLight.js skips
@@ -808,19 +802,22 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     overflow: hidden;
 }
 
-.card-grid-item:nth-child(1) {
-    margin-top: 14rem;
-    margin-left: 1rem;
-}
+/* Desktop only — ≤991 the grid is one column and the -10rem pulls card 4 into card 3 */
+@media (min-width: 992px) {
+    .card-grid-item:nth-child(1) {
+        margin-top: 14rem;
+        margin-left: 1rem;
+    }
 
-.card-grid-item:nth-child(4) {
-    margin-top: -10rem;
-    place-self: center;
-}
+    .card-grid-item:nth-child(4) {
+        margin-top: -10rem;
+        place-self: center;
+    }
 
-.card-grid-item:nth-child(3) {
-    place-self: end;
-    margin-top: 10rem;
+    .card-grid-item:nth-child(3) {
+        place-self: end;
+        margin-top: 10rem;
+    }
 }
 
 
@@ -1233,6 +1230,18 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     }
 }
 
+/* Company Tabs Mobile — the nav is a native horizontal swipe ≤991 (overflow-x + scroll-snap set in
+   Webflow); the scrollbar can only be hidden here */
+@media (max-width: 991px) {
+    .companypage_tabs-nav {
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .companypage_tabs-nav::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 
 /* Cases Page — active row fill (CaseRowFill.js wipes it with clip-path, behind the content),
    arrow, sidebar preview. Text / logo / arrow follow .is-active on the fill's timing:
@@ -1452,6 +1461,19 @@ html {
 .casepage_bullet-item::marker {
     color: var(--main-colours--ink);
     font-size: .7em;
+}
+
+/* Cases Slider Links — no native link/image drag (Safari ignores a cancelled dragstart less
+   reliably) and no iOS long-press link preview, both steal the drag (CasesSlider.js) */
+.case_card a,
+.case_card img {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+/* Only the active card's link opens the case; class set by CasesSlider.js */
+.case_card:not(.is-case-active) .case-car-content-link {
+    pointer-events: none;
 }
 
 /* Draggable gallery */

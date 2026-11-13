@@ -12,6 +12,16 @@ const END_SCALE = 1
 const SCROLL_END = 'top top'
 const SCRUB = true
 
+//≤991 the full box is the whole viewport, so a uniform scale would start tall too. Instead it
+//starts as a START_ASPECT strip — full width minus START_GUTTER_REM per side, at the box's top
+//so it fills the peek under the headline (size the peek with the Webflow top) — and grows to
+//the full box. Real width/height, not clip or scale: object-fit cover re-crops every frame, so
+//the picture reads landscape at the start. Layout per frame, but only inside the absolute box.
+//Checked once at load, like the other ≤991 modules
+const LANDSCAPE_MEDIA = '(max-width: 991px)'
+const START_ASPECT = 16 / 9
+const START_GUTTER_REM = 1
+
 //Intro — on reveal the container rises from top 0 to its Webflow -25%.
 //Runs on yPercent so it stacks with the scroll tween's y instead of fighting it.
 const INTRO_DURATION = 1.2
@@ -25,13 +35,22 @@ export class ImageSettle extends Module {
         if (!this.wrapper || !this.container) return
 
         this.isRevealed = false
-        this.setIntroStartState()
+        this.isLandscapeStart = window.matchMedia(LANDSCAPE_MEDIA).matches
+
+        //Sizes come from the wrapper — the container is 100% of it in Webflow, and its own
+        //size is inline mid-tween when a refresh re-reads these
+        let fromState = this.isLandscapeStart
+            ? { y: 0, scale: END_SCALE, x: () => this.gutter(), width: () => this.stripWidth(), height: () => this.stripWidth() / START_ASPECT }
+            : { y: 0, scale: START_SCALE }
+        let toState = this.isLandscapeStart
+            ? { scale: END_SCALE, x: 0, width: () => this.wrapper.offsetWidth, height: () => this.wrapper.offsetHeight }
+            : { scale: END_SCALE }
 
         this.animate(gsap.fromTo(this.container,
-            { y: 0, scale: START_SCALE },
+            fromState,
             {
+                ...toState,
                 y: () => -this.container.offsetTop,
-                scale: END_SCALE,
                 ease: 'none',
                 scrollTrigger: {
                     trigger: this.wrapper,
@@ -42,6 +61,20 @@ export class ImageSettle extends Module {
                 },
             }
         ))
+
+        //After the tween — ≤991 its from state shrank the box, and yPercent is of the current height
+        this.setIntroStartState()
+    }
+
+    //Helpers
+
+    gutter() {
+        let rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+        return START_GUTTER_REM * rootFontSize
+    }
+
+    stripWidth() {
+        return this.wrapper.offsetWidth - this.gutter() * 2
     }
 
     //Pushes the container down to where top: 0 would place it
@@ -65,6 +98,6 @@ export class ImageSettle extends Module {
 
     destroy() {
         super.destroy()
-        if (this.container) gsap.set(this.container, { clearProps: 'transform' })
+        if (this.container) gsap.set(this.container, { clearProps: 'transform,width,height' })
     }
 }

@@ -2,7 +2,9 @@ import { gsap } from '../../core/gsap'
 import { Module } from '../../core/Module'
 import { SplitBlurReveal } from '../../modules/SplitBlurReveal'
 
-//Home hero — everything in it plays in on page reveal and out once scrolled past EXIT_SCROLL_VW.
+//Home hero — everything in it plays in on page reveal and out once scrolled past the exit line:
+//EXIT_LEAD_VH before .hero-main's bottom reaches the viewport bottom (where its sticky content
+//starts scrolling away), so the out plays while it's still held.
 //  Texts (headline, subtitle, .hero-top label + tag) — manual SplitBlurReveals: lines rise out
 //      of their masks and un-blur, leave upward and blur back on. Cascaded by TEXT_DELAYS
 //  .hero_planet-img — fades only
@@ -25,8 +27,11 @@ const PLANET_IN_EASE = 'power2.out'
 const PLANET_OUT_DURATION = 0.4
 const PLANET_OUT_EASE = 'power2.in'
 
-//Scroll position, in viewport widths, where the hero leaves
-const EXIT_SCROLL_VW = 1.4
+//Exit line — measured from .hero (not sticky; .hero-main is its first in-flow child, so they
+//share a top), since a sticky element's own box moves while it's held
+const HERO_SELECTOR = '.hero'
+const HERO_MAIN_SELECTOR = '.hero-main'
+const EXIT_LEAD_VH = 50
 
 export class HeroReveal extends Module {
 
@@ -43,11 +48,17 @@ export class HeroReveal extends Module {
 
         if (this.planets.length) gsap.set(this.planets, { autoAlpha: 0 })
 
+        this.hero = document.querySelector(HERO_SELECTOR)
+        this.heroMain = document.querySelector(HERO_MAIN_SELECTOR)
         this.isRevealed = false
         this.isShown = false
+        this.exitScroll = this.measureExit()
 
         this.listen(window, 'scroll', () => this.sync(), { passive: true })
-        this.listen(window, 'resize', () => this.sync())
+        this.listen(window, 'resize', () => {
+            this.exitScroll = this.measureExit()
+            this.sync()
+        })
     }
 
     //Called once the screen is visible
@@ -59,8 +70,18 @@ export class HeroReveal extends Module {
 
     //Helpers
 
+    //Scroll where .hero-main's bottom is EXIT_LEAD_VH above reaching the viewport bottom.
+    //Missing sections: never exits
+    measureExit() {
+        if (!this.hero || !this.heroMain) return Infinity
+        let heroTop = this.hero.getBoundingClientRect().top + window.scrollY
+        let heroMainBottom = heroTop + this.heroMain.offsetHeight
+        let lead = window.innerHeight * EXIT_LEAD_VH / 100
+        return Math.max(0, heroMainBottom - window.innerHeight - lead)
+    }
+
     isPastExit() {
-        return window.scrollY > window.innerWidth * EXIT_SCROLL_VW
+        return window.scrollY > this.exitScroll
     }
 
     //Animations

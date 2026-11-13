@@ -2,9 +2,9 @@ import { ScrollTrigger } from '../core/gsap'
 import { Module } from '../core/Module'
 import { COLOR_ZONE_TARGETS } from './colorZoneTargets'
 
-//Header and floating CTA go orange over the footer, on every page that has one. Each target gets
-//its own class on <html> once .pre-footer-offset (the spacer in front of the fixed footer) passes
-//that target's line. main.css "Footer Zone Color" sets the variable pair with !important, so it
+//Header goes orange over the footer, on every page that has one (the floating CTA is always
+//orange). Each target gets its own class on <html> once .pre-footer-offset (the spacer in front
+//of the fixed footer) passes that target's line. main.css "Footer Zone Color" sets the variable pair with !important, so it
 //wins over the per-page :has() rules and the inline pairs the page zone modules write
 //(HeaderColorZones, HeaderStagesInvert) — no ordering fights at the shared scroll position.
 
@@ -14,7 +14,6 @@ const SPACER_SELECTOR = '.pre-footer-offset'
 
 const CLASS_BY_TARGET = {
     'header': 'is-footer-under-header',
-    'floating-cta': 'is-footer-under-floating-cta',
 }
 
 //detail: { isOverFooter }

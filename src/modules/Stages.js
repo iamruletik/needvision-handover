@@ -9,10 +9,13 @@ import { SplitBlurReveal } from './SplitBlurReveal'
 //  data-stage-subtitle  "Даем весь|расклад"
 //  data-stage-text      "Собрав всю информацию…"     — paragraph, wraps on its own
 //A missing attribute falls back to what the card shows in Webflow (stage 1 needs none).
-//Every text element is a manual SplitBlurReveal, cascading top to bottom. A swap plays the
-//current text out, sets the next stage's text, plays it in — following the scroll: down, lines
-//travel up; up, they travel down. Title / subtitle lines are cloned from the first line when a
-//stage has more, hidden when it has fewer. The filled dot fades to the active stage.
+//Every text element is a manual SplitBlurReveal, cascading top to bottom. A swap is one motion:
+//each shown line leaves as a ghost (a frozen copy laid over it, played out, then removed) while
+//the real element already has the next stage's text and follows it in FOLLOW_GAP behind —
+//following the scroll: down, lines travel up; up, they travel down. Title / subtitle always keep
+//as many line elements as their longest stage (cloned from the first line); a stage with fewer
+//fills the rest with an invisible line — the card's layout never changes, nothing below jumps.
+//The filled dot fades to the active stage.
 //The first stage reveals when the section scrolls in. Also: per-image reveal/parallax scrubs.
 
 //Scroll share per stage — index 2 gets 30% of the range, others split the rest.
@@ -28,6 +31,13 @@ const SLOTS = [
 ]
 const LINE_SEPARATOR = '|'
 const TEXT_GAP = 0.05 //between consecutive text elements
+//New text starts this long after the old starts leaving — with the out (0.4s power3.in) against
+//the in (1.1s power3.out) the two never meet inside a mask, even at 0
+const FOLLOW_GAP = 0.1
+const RESERVED_LINE_TEXT = ' ' //keeps an unused line's height, shows nothing
+const RESIZE_DEBOUNCE = 0.15 //seconds — reserved heights re-measured after the resize settles
+const GHOST_ATTRIBUTE = 'data-stages-ghost'
+const GHOST_UNIT_ATTRIBUTE = 'data-stages-ghost-unit'
 
 //Pagination
 const DOT_SELECTOR = '.stages_dot'
@@ -48,6 +58,8 @@ const BACKGROUND_COLOR = '#FFFBF2'
 const IMAGE_RISE = '8.33vw'
 const IMAGE_BLUR_PX = 12
 const IMAGE_PARALLAX_PERCENT = 6
+const RIGHT_GALLERY_SELECTOR = '.stages_gallery-right'
+const RIGHT_IMAGE_PARALLAX_PERCENT = 3 //right gallery drifts slower
 
 export class Stages extends Module {
 
@@ -64,10 +76,16 @@ export class Stages extends Module {
         if (!this.card || this.dots.length === 0) return
 
         this.direction = DIRECTION_DOWN
+        this.ghosts = []
         this.slots = SLOTS.map((slot) => this.createSlot(slot)).filter(Boolean)
         this.stages = this.dots.map((dot) => this.readStage(dot))
+        this.reserveLines()
+        this.reserveHeights()
+        this.listen(window, 'resize', () => {
+            this.resizeCall?.kill()
+            this.resizeCall = gsap.delayedCall(RESIZE_DEBOUNCE, () => this.reserveHeights())
+        })
         this.currentStep = 0
-        this.swapId = 0
         this.isRevealed = false
         this.isInView = false
         this.hasIntroPlayed = false
@@ -126,7 +144,8 @@ export class Stages extends Module {
                 }
             ))
 
-            let parallaxShift = index % 2 === 0 ? -IMAGE_PARALLAX_PERCENT : IMAGE_PARALLAX_PERCENT
+            let parallaxPercent = image.closest(RIGHT_GALLERY_SELECTOR) ? RIGHT_IMAGE_PARALLAX_PERCENT : IMAGE_PARALLAX_PERCENT
+            let parallaxShift = index % 2 === 0 ? -parallaxPercent : parallaxPercent
             this.animate(gsap.to(image, {
                 yPercent: parallaxShift,
                 ease: 'none',
@@ -142,8 +161,7 @@ export class Stages extends Module {
 
     //Setup Helpers
 
-    //lines: every element the slot has ever used — Webflow's own first, clones after.
-    //Only the first activeCount are shown; the rest sit hidden until a stage needs them
+    //lines: Webflow's own elements first, reserveLines() clones after — all always shown
     createSlot(slot) {
         let elements = [...this.card.querySelectorAll(slot.selector)]
         if (elements.length === 0) return null
@@ -251,23 +269,97 @@ export class Stages extends Module {
     }
 
     //Writes a stage's text into the card, parked hidden on the entry side (setText) — follow with playIn
+    //Every slot shows all its reserved lines — lines this stage doesn't use get RESERVED_LINE_TEXT
     applyStageText(index) {
         let stage = this.stages[index]
         if (!stage) return
 
         this.slots.forEach((slot) => {
             let texts = stage[slot.key] ?? []
-            let count = Math.max(1, texts.length)
-            while (slot.lines.length < count) this.addCloneLine(slot)
-
-            slot.activeCount = count
+            slot.activeCount = slot.lines.length
             slot.lines.forEach((line, lineIndex) => {
-                let isActive = lineIndex < count
-                line.element.style.display = isActive ? '' : 'none'
-                if (isActive) line.reveal.setText(texts[lineIndex] ?? '')
-                else line.reveal.reset()
+                line.reveal.setText(texts[lineIndex] || RESERVED_LINE_TEXT)
             })
         })
+    }
+
+    //Every line element's min-height = its tallest text across all stages (the paragraph wraps
+    //differently per stage). The card never changes size on a swap — its sticky .stages_text-wrapper
+    //can't shift. Measured on an invisible copy beside it, same width, so the real one isn't touched
+    reserveHeights() {
+        this.slots?.forEach((slot) => slot.lines.forEach((line, lineIndex) => {
+            let probe = line.element.cloneNode(false)
+            probe.removeAttribute('data-stages-clone')
+            Object.assign(probe.style, {
+                position: 'absolute',
+                left: '0px',
+                top: '0px',
+                width: `${line.element.clientWidth}px`,
+                minHeight: '0px',
+                visibility: 'hidden',
+                pointerEvents: 'none',
+            })
+            line.element.after(probe)
+
+            let tallest = 0
+            this.stages.forEach((stage) => {
+                probe.textContent = stage[slot.key]?.[lineIndex] || RESERVED_LINE_TEXT
+                tallest = Math.max(tallest, probe.offsetHeight)
+            })
+            probe.remove()
+            line.element.style.minHeight = `${tallest}px`
+        }))
+    }
+
+    //Line elements up to the longest stage, per slot — once, before any text goes in
+    reserveLines() {
+        this.slots.forEach((slot) => {
+            let count = Math.max(1, ...this.stages.map((stage) => stage[slot.key]?.length ?? 0))
+            while (slot.lines.length < count) this.addCloneLine(slot)
+            slot.activeCount = slot.lines.length
+        })
+    }
+
+    //Ghosts — frozen copies of every shown line, laid exactly over it as its sibling (same parent,
+    //so inherited type — .stages_meta-row's uppercase — carries over), absolute against their own
+    //containing block. Copied mid-animation too: a line's yPercent and its element's blur carry
+    //over, so the ghost leaves from exactly where the line was
+    createGhosts() {
+        return this.slots.flatMap((slot) => slot.lines.slice(0, slot.activeCount)).map((line, index) => {
+            let item = line.reveal.items?.[0]
+            if (!item?.units?.length) return null
+
+            //Tag the moving units so the copy can find its own
+            let yPercents = item.units.map((unit) => Number(gsap.getProperty(unit, 'yPercent')) || 0)
+            item.units.forEach((unit) => unit.setAttribute(GHOST_UNIT_ATTRIBUTE, ''))
+            let ghost = line.element.cloneNode(true)
+            item.units.forEach((unit) => unit.removeAttribute(GHOST_UNIT_ATTRIBUTE))
+
+            let rect = line.element.getBoundingClientRect()
+            ghost.setAttribute(GHOST_ATTRIBUTE, '')
+            ghost.setAttribute('aria-hidden', 'true')
+            ghost.removeAttribute('data-stages-clone')
+            Object.assign(ghost.style, {
+                position: 'absolute',
+                left: '0px',
+                top: '0px',
+                width: `${rect.width}px`,
+                margin: '0',
+                pointerEvents: 'none',
+                display: '',
+            })
+            line.element.after(ghost)
+
+            //Now it has a containing block — place it on the line's current on-screen box
+            let ghostRect = ghost.getBoundingClientRect()
+            ghost.style.left = `${rect.left - ghostRect.left}px`
+            ghost.style.top = `${rect.top - ghostRect.top}px`
+
+            let units = [...ghost.querySelectorAll(`[${GHOST_UNIT_ATTRIBUTE}]`)]
+            //Clone carries the transform as a matrix — GSAP would read it as px; hand it the yPercent instead
+            units.forEach((unit, unitIndex) => gsap.set(unit, { y: 0, yPercent: yPercents[unitIndex] }))
+            return { element: ghost, units, reveal: line.reveal, index }
+        }).filter(Boolean)
     }
 
     //New line after the slot's last one, same classes as its first
@@ -298,13 +390,14 @@ export class Stages extends Module {
         this.activeReveals().forEach((reveal, index) => reveal.playIn(index * TEXT_GAP))
     }
 
-    async transitionTo(target) {
+    //Old lines leave as ghosts, the new text follows FOLLOW_GAP behind — one motion, no empty beat.
+    //A newer swap mid-way ghosts whatever is showing then (entering lines included), from where it is
+    transitionTo(target) {
         if (target === this.currentStep) return
         if (target < 0 || target >= this.stages.length) return
 
         let direction = target > this.currentStep ? DIRECTION_DOWN : DIRECTION_UP
         this.currentStep = target
-        let swapId = ++this.swapId
         this.setActiveDot(target)
 
         //Before the intro: text just switches, parked hidden for the intro to bring in
@@ -313,27 +406,47 @@ export class Stages extends Module {
             return
         }
 
-        //A newer swap cuts this one off — its playOut interrupts these tweens, the check drops the rest
         this.setDirection(direction)
-        await Promise.all(this.activeReveals().map((reveal, index) => reveal.playOut(index * TEXT_GAP)))
-        if (swapId !== this.swapId || !this.slots) return
-
+        let ghosts = this.createGhosts()
         this.applyStageText(target)
-        this.activeReveals().forEach((reveal, index) => reveal.playIn(index * TEXT_GAP))
+        ghosts.forEach((ghost) => this.playGhostOut(ghost, ghost.index * TEXT_GAP))
+        this.activeReveals().forEach((reveal, index) => reveal.playIn(index * TEXT_GAP + FOLLOW_GAP))
+    }
+
+    //Same motion as the reveal's own out (its options), then the copy is gone
+    playGhostOut(ghost, delay) {
+        let { blur } = ghost.reveal.options
+        let { direction, offset, duration, stagger, ease } = ghost.reveal.options.out
+        let timeline = gsap.timeline({
+            delay,
+            onComplete: () => this.removeGhost(ghost),
+        })
+        timeline.to(ghost.units, { yPercent: direction === 'down' ? offset : -offset, duration, stagger, ease }, 0)
+        if (blur > 0) timeline.to(ghost.element, { filter: `blur(${blur}px)`, duration, ease }, 0)
+        ghost.timeline = timeline
+        this.ghosts.push(ghost)
+    }
+
+    removeGhost(ghost) {
+        ghost.timeline?.kill()
+        ghost.element.remove()
+        this.ghosts = this.ghosts.filter((other) => other !== ghost)
     }
 
     //Cleanup — card back to its Webflow markup: clones gone, originals shown with their own text
 
     destroy() {
-        this.swapId++
+        ;[...(this.ghosts ?? [])].forEach((ghost) => this.removeGhost(ghost))
+        this.ghosts = []
+        this.resizeCall?.kill()
         this.slots?.forEach((slot) => slot.lines.forEach((line) => {
+            line.element.style.removeProperty('min-height')
             line.reveal.destroy()
             if (line.isClone) {
                 line.element.remove()
                 return
             }
             line.element.innerHTML = line.originalHtml
-            line.element.style.removeProperty('display')
         }))
         this.slots = null
         this.dotFulls?.forEach((full) => {

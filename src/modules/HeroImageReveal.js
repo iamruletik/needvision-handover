@@ -1,8 +1,9 @@
 import { gsap } from '../core/gsap'
 import { Module } from '../core/Module'
+import { HERO_IMAGE_REVEAL } from '../pages/home/SceneScrollTimeline'
 
-//Hero image expands from a thin strip to full frame — plays once when
-//.hero-image-wrapper hits viewport center. Animates width by design decision:
+//Hero image expands from a thin strip to full frame — plays once the 3D scene's shader has opened
+//the video (HERO_IMAGE_REVEAL, timed with the scene by SceneScrollTimeline). Animates width by design decision:
 //surrounding layout is meant to react to the image growing.
 //Desktop: the labels are flex siblings beside it, so they ride out to the sides.
 //≤991: the labels sit under it (main.css "Hero Image Stacked") and spread to its edges
@@ -15,11 +16,6 @@ const STACKED_MEDIA = '(max-width: 991px)'
 const STACKED_GUTTER_REM = 1
 const REVEAL_DURATION = 1.4
 const REVEAL_EASE = 'power2.out'
-//Wrapper, not .hero-image — the section is 1400px tall with heavy padding,
-//its center lands far below the image's actual center.
-//Exported — the 3D video starts at this same point (SceneScrollTimeline)
-export const HERO_IMAGE_TRIGGER_SELECTOR = '.hero-image-wrapper'
-export const HERO_IMAGE_TRIGGER_START = 'center center'
 
 export class HeroImageReveal extends Module {
 
@@ -27,7 +23,7 @@ export class HeroImageReveal extends Module {
         this.image = document.querySelector('.hero__img')
         if (!this.image) return
 
-        let triggerElement = document.querySelector(HERO_IMAGE_TRIGGER_SELECTOR) || document.querySelector('.hero-image')
+        let triggerElement = document.querySelector(HERO_IMAGE_REVEAL.trigger)
         if (!triggerElement) return
 
         this.stackedMedia = window.matchMedia(STACKED_MEDIA)
@@ -40,7 +36,7 @@ export class HeroImageReveal extends Module {
             ease: REVEAL_EASE,
             scrollTrigger: {
                 trigger: triggerElement,
-                start: HERO_IMAGE_TRIGGER_START,
+                start: HERO_IMAGE_REVEAL.start,
                 toggleActions: 'play none none none',
                 invalidateOnRefresh: true,
             },

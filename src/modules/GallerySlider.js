@@ -664,25 +664,34 @@ class GalleryStage extends Module {
     }
 
     //Cursor — .casepage_gallery-hint becomes a custom cursor that follows the
-    //pointer while hovering the drag zone (inert on touch, no persistent pointer there)
+    //pointer while hovering the drag zone (inert on touch, no persistent pointer there).
+    //Moved to <body>: position: fixed is relative to the nearest transformed / will-change
+    //ancestor, not the viewport — under one, clientX/Y land offset or scaled (the hint ran
+    //ahead of the pointer on client Macs). Its text styles are its own classes, nothing inherited.
+    //Put back on destroy, so a Barba swap doesn't strand it in <body>.
 
     bindCursor() {
         let cursor = this.stage.querySelector('.casepage_gallery-hint')
         if (!cursor) return
 
+        this.cursor = cursor
+        this.cursorHome = { parent: cursor.parentNode, nextSibling: cursor.nextSibling }
+        document.body.appendChild(cursor)
+
         cursor.style.cssText += `
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
+            right: auto !important;
             pointer-events: none !important;
             z-index: 9999 !important;
-            opacity: 0 !important;
-            transform: translate(-50%, -50%) !important;
         `
+        //Centred by GSAP, followed on x / y — transforms only, no layout per move
+        gsap.set(cursor, { xPercent: -50, yPercent: -50, opacity: 0 })
         this.track.style.cursor = 'none'
 
-        const moveX = gsap.quickTo(cursor, 'left', { duration: CURSOR_FOLLOW_DURATION, ease: 'power3.out' })
-        const moveY = gsap.quickTo(cursor, 'top', { duration: CURSOR_FOLLOW_DURATION, ease: 'power3.out' })
+        const moveX = gsap.quickTo(cursor, 'x', { duration: CURSOR_FOLLOW_DURATION, ease: 'power3.out' })
+        const moveY = gsap.quickTo(cursor, 'y', { duration: CURSOR_FOLLOW_DURATION, ease: 'power3.out' })
 
         this.listen(this.track, 'mouseenter', () => {
             gsap.to(cursor, { opacity: 1, duration: CURSOR_FADE_DURATION })
@@ -701,5 +710,21 @@ class GalleryStage extends Module {
         this.glideTween?.kill()
         if (this.dragProxy) gsap.killTweensOf(this.dragProxy)
         super.destroy()
+        this.restoreCursor()
+    }
+
+    //Back where Webflow had it; the old sibling may be gone, then it goes last
+    restoreCursor() {
+        if (!this.cursor || !this.cursorHome) return
+        gsap.killTweensOf(this.cursor)
+        let { parent, nextSibling } = this.cursorHome
+        try {
+            if (nextSibling?.parentNode === parent) parent.insertBefore(this.cursor, nextSibling)
+            else parent.appendChild(this.cursor)
+        } catch (error) {
+            this.cursor.remove()
+        }
+        this.cursor = null
+        this.cursorHome = null
     }
 }

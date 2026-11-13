@@ -23,7 +23,15 @@ const CONFIG = {
     holdDuration: 5,
     exitDuration: 25,
 
+    //Timeline ends once the next section fully covers the cards — they're still moving (exit
+    //accelerates) when hidden, never seen stopping
+    endTrigger: '.section-logo',
+    end: 'top top',
+
     exitY: '-83.33vw',
+    //Every exit distance (exitY, data-end-y, grid / column exit shifts) × this — same scroll,
+    //shorter travel, slower exit: cards still up as the next section slides over them
+    exitDistanceScale: 0.5,
 
     //Fraction of enterDuration spent fading in — card rides opaque after
     enterFadeRatio: 0.35,
@@ -75,11 +83,14 @@ export class BentoParallax extends Module {
 
         //scrub 0.5 for stability, invalidateOnRefresh false — refresh recalcs
         //fromTo start values and opacity blinks
+        let endTrigger = document.querySelector(CONFIG.endTrigger)
         this.timeline = this.animate(gsap.timeline({
             scrollTrigger: {
                 trigger: this.stickySection,
                 start: 'top bottom',
-                end: 'bottom top',
+                //No next section: the old end, sticky's bottom past the viewport top
+                endTrigger: endTrigger ?? this.stickySection,
+                end: endTrigger ? CONFIG.end : 'bottom top',
                 scrub: 0.5,
                 invalidateOnRefresh: false,
             },
@@ -159,17 +170,18 @@ export class BentoParallax extends Module {
     //Phase 2 — Exit
 
     buildExitPhase() {
+        let scale = CONFIG.exitDistanceScale
         this.timeline.to('.bento_grid',
-            { y: CONFIG.gridExitShift, duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
+            { y: this.scaleDistance(CONFIG.gridExitShift, scale), duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
             this.exitStart
         )
         this.timeline.to('.bento_column',
-            { y: CONFIG.columnExitShift, duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
+            { y: this.scaleDistance(CONFIG.columnExitShift, scale), duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
             this.exitStart
         )
 
         this.cards.forEach((card) => {
-            let endY = card.getAttribute('data-end-y') || CONFIG.exitY
+            let endY = this.scaleDistance(card.getAttribute('data-end-y') || CONFIG.exitY, scale)
             let exitDelay = parseFloat(card.getAttribute('data-exit-delay')) || 0
 
             //Slide fully past the top — no opacity needed
@@ -188,8 +200,8 @@ export class BentoParallax extends Module {
             if (card.getClientRects().length === 0) return
 
             let pattern = CONFIG.scatterPattern[index % CONFIG.scatterPattern.length]
-            let startY = this.scaleMove(card.getAttribute('data-start-y') || pattern.y)
-            let endY = this.scaleMove(card.getAttribute('data-end-y') || CONFIG.exitY)
+            let startY = this.scaleDistance(card.getAttribute('data-start-y') || pattern.y, CONFIG.mobileMoveScale)
+            let endY = this.scaleDistance(card.getAttribute('data-end-y') || CONFIG.exitY, CONFIG.mobileMoveScale)
 
             this.animate(gsap.fromTo(card,
                 { y: startY },
@@ -211,9 +223,9 @@ export class BentoParallax extends Module {
     //Helpers
 
     //Keeps the unit — attributes are unitless px ("400"), the config is vw
-    scaleMove(value) {
+    scaleDistance(value, scale) {
         let number = parseFloat(value)
         if (Number.isNaN(number)) return value
-        return `${number * CONFIG.mobileMoveScale}${gsap.utils.getUnit(value)}`
+        return `${number * scale}${gsap.utils.getUnit(value)}`
     }
 }
