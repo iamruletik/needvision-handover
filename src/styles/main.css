@@ -423,6 +423,27 @@
 }
 
 
+/* Hero Scroll Arrow — CaseHeroScroll.js clips the case hero hint's arrow to its circle and puts
+   it in a track with a copy one circle-height above (--hero-scroll-roll, svg units = px).
+   Hovering the hint drops the track: arrow out the bottom, copy lands in its place */
+.page_hero-scroll {
+    cursor: pointer;
+}
+.hero-scroll-arrow__track {
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out — same as the other arrow drums */
+}
+@media (hover: hover) {
+    .page_hero-scroll:hover .hero-scroll-arrow__track {
+        transform: translateY(var(--hero-scroll-roll, 0px));
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .hero-scroll-arrow__track {
+        transition: none;
+    }
+}
+
+
 /* Call to Action — hover fills orange, text goes ink */
 .call-to-action {
     transition:
@@ -450,6 +471,62 @@
         background-color: var(--main-colours--orange);
         border-color: var(--main-colours--orange);
     }
+}
+
+
+/* Footer Legal Links — hover dims to half */
+.legal-links-group .generic-link {
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+@media (hover: hover) {
+    .legal-links-group .generic-link:hover {
+        opacity: 0.5;
+    }
+}
+
+
+/* Button Arrow — IconRoll.js (ButtonArrowRoll) wraps the arrow svg: mask > track > [svg, clone].
+   Clone waits one width + gap to the left; hovering the button moves the track right by the
+   same amount: the arrow leaves through the right edge, the clone slides in from the left */
+.button-clear,
+.button-grey {
+    --button-arrow-duration: 0.5s;
+    --button-arrow-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out — same as the header arrow */
+    --button-arrow-gap: 25%;
+}
+.button-arrow-roll__mask {
+    display: inline-flex;
+    overflow: hidden;
+}
+.button-arrow-roll__track {
+    position: relative;
+    display: inline-flex;
+    transition: transform var(--button-arrow-duration) var(--button-arrow-ease);
+}
+.button-arrow-roll__clone {
+    position: absolute;
+    top: 0;
+    left: calc(-100% - var(--button-arrow-gap));
+}
+@media (hover: hover) {
+    .button-clear:hover .button-arrow-roll__track,
+    .button-grey:hover .button-arrow-roll__track {
+        transform: translateX(calc(100% + var(--button-arrow-gap)));
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .button-arrow-roll__track {
+        transition: none;
+    }
+}
+
+
+/* Header Counter — iOS Safari auto-links digit runs as phone numbers (blue); keep the header's color */
+.header-counter-wrapper a,
+.header-counter-wrapper a[x-apple-data-detectors] {
+    color: inherit !important;
+    text-decoration: none !important;
+    font: inherit !important;
 }
 
 
@@ -533,8 +610,8 @@
 }
 @media (hover: hover) {
     #header-menu-link:hover .menu-lines-layout {
-        padding-top: 4px;
-        padding-bottom: 5px;
+        padding-top: 3px;
+        padding-bottom: 4px;
     }
 }
 
@@ -759,9 +836,20 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     color: inherit;
 }
 
-/* Contact Form — textarea resizes vertically only */
-.contacts-form-input-field.area {
-    resize: vertical;
+/* Contact Form — textarea locked to its Webflow height */
+.contacts-form-input-field.area,
+textarea#field {
+    resize: none;
+}
+
+/* Contact Form — Webflow's success / error boxes as plain black text, no colored panels */
+.contacts-form-wrap .w-form-done,
+.contacts-form-wrap .w-form-fail {
+    margin-top: 1rem;
+    padding: 0;
+    background-color: transparent;
+    color: var(--main-colours--black);
+    text-align: left;
 }
 
 /* Contact Form — fields keep only the bottom border */
@@ -1045,6 +1133,33 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 }
 
 
+/* Cases Backgrounds Shade — ink at 20% on top fading out by 20%, clear through the middle half,
+   back to 20% over the last 30%. Above the crossfading images, never takes the pointer */
+:root {
+    --image-shade-gradient: linear-gradient(to bottom,
+            rgba(4, 1, 1, 0.2) 0%,
+            rgba(4, 1, 1, 0) 20%,
+            rgba(4, 1, 1, 0) 70%,
+            rgba(4, 1, 1, 0.2) 100%);
+}
+.case_bg-images::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image: var(--image-shade-gradient);
+    pointer-events: none;
+}
+
+
+/* Cases Pagination Button — Webflow's .button-white transitions `all` over 600ms, so every GSAP
+   frame of CasesIntro's rise / fade was eased again by CSS: it trailed, then snapped. Only the
+   hover colors transition here */
+.cases_pagination .button-white {
+    transition-property: color, background-color, border-color;
+}
+
+
 /* Cases Slider — pointer cursor on card content, drag-zone parent has grab */
 .case_card-content,
 .case_card-content * {
@@ -1094,6 +1209,29 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 /* Bento — GSAP moves transform only; CSS top offsets on ._1/._4 need non-static position */
 .bento_card.is-parallax {
     position: relative;
+}
+
+
+/* Bento Cases Button — the whole action area opens /cases: the button's link (Webflow) is
+   stretched over the area. Hover inverts the button: ink fill, cream text */
+.bento_action-area {
+    position: relative;
+}
+.bento_action-area .bento_button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+.bento_button {
+    transition:
+        color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+}
+@media (hover: hover) {
+    .bento_action-area:hover .bento_button {
+        color: #fffbf2;
+        background-color: var(--main-colours--black);
+    }
 }
 
 
@@ -1339,6 +1477,9 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
 .keep-scrolling-content {
     opacity: 0;
     visibility: hidden;
+    /* Slide in / out — NextCaseTransition tweens the variable. Its own property, so it adds to
+       whatever transform Webflow gives the pill. translate — Safari 14.1+ */
+    translate: 0 var(--keep-scrolling-shift, 0px);
 }
 .keep-scrolling-fill {
     transform: scaleX(0);
@@ -1357,6 +1498,11 @@ html:has([data-barba-namespace="company"]) .footer-video { display: none; }
     transform-origin: 50% 50%;
     pointer-events: none;
     will-change: transform;
+}
+/* Nothing in the copied hero takes the pointer either — Webflow children with their own
+   pointer-events: auto would otherwise sit over the page (the gallery slider) and eat its drags */
+.next-case-stage * {
+    pointer-events: none !important;
 }
 /* Full size (NextCaseTransition): no more layer hint — Chrome redraws it at full resolution
    while it still rises, instead of stretching the half-size raster it made while growing, so

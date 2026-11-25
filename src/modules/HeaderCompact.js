@@ -2,7 +2,7 @@ import { gsap, ScrollTrigger, Flip } from '../core/gsap'
 import { Module } from '../core/Module'
 import { ProfitCounter } from './ProfitCounter'
 import { MenuReveal } from './MenuReveal'
-import { DescriptorReveal } from './DescriptorReveal'
+import { DescriptorReveal, DESCRIPTOR_HIDE_SECONDS } from './DescriptorReveal'
 import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 
 //Header compacts on scroll. Persistent — the header lives outside the Barba container,
@@ -440,9 +440,10 @@ export class HeaderCompact extends Module {
         return [this.casesLink, this.menuLink, ...lines]
     }
 
-    //Logo + whatever shifts because of it — measured and animated together
+    //Logo + whatever shifts because of it — measured and animated together. The descriptor only
+    //while it stays shown (menu compact at the top, kept / pinned pages); hidden, it never moves
     logoFlipTargets() {
-        return [this.logo, this.descriptor].filter(Boolean)
+        return [this.logo, this.isDescriptorHidden ? null : this.descriptor].filter(Boolean)
     }
 
     //Animations
@@ -459,6 +460,12 @@ export class HeaderCompact extends Module {
 
         //States first — captures mid-animation positions, so a reversal mid-way is smooth
         let logoState = Flip.getState(this.logoFlipTargets())
+        //Descriptor fading out: no glide — it holds where it was until fully faded, then lands
+        //on its new spot unseen. Fading back in: it's already home (snapped while hidden)
+        let isDescriptorHolding = isCompact && this.isDescriptorHidden && this.descriptor
+        let descriptorState = isDescriptorHolding ? Flip.getState(this.descriptor) : null
+        this.descriptorHold?.kill()
+        if (this.descriptor && !isDescriptorHolding) gsap.set(this.descriptor, { clearProps: 'transform' })
         let placerStartEdges = this.placerEdgesFromCurrent()
         this.logoFlip?.kill()
         this.placerTween?.kill()
@@ -505,6 +512,10 @@ export class HeaderCompact extends Module {
             ? { duration: LOGO_DURATION, ease: LOGO_EASE, scale: true }
             : { duration: LOGO_SPREAD_DURATION, delay: LOGO_SPREAD_DELAY, ease: LOGO_SPREAD_EASE, scale: true }
         ))
+        //steps(1): stays on the start state for the whole hide, jumps to the end at its end
+        if (descriptorState) {
+            this.descriptorHold = this.animate(Flip.from(descriptorState, { duration: DESCRIPTOR_HIDE_SECONDS, ease: 'steps(1)', scale: true }))
+        }
 
         //Placer pill fades in under the links, its edges carry them
         this.placerTween = this.animate(gsap.fromTo(this.linksPlacer,
@@ -545,7 +556,7 @@ export class HeaderCompact extends Module {
         }
 
         //Instant: straight to the end — onCompletes still run (links home, edges back to CSS)
-        if (instant) [this.logoFlip, this.placerTween, this.counterTween].forEach((tween) => tween?.progress(1))
+        if (instant) [this.logoFlip, this.descriptorHold, this.placerTween, this.counterTween].forEach((tween) => tween?.progress(1))
     }
 
     //10 — up out of view / back down; a reversal mid-way turns around from where they are

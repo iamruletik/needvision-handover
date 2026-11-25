@@ -42,14 +42,15 @@ const CONFIG = {
     enterStaggerSpread: 5,
     //How long a card stands scattered before assembling — user sees the scatter while the section rolls in
     scatterHold: 14,
-    //Cycled by DOM order; vertical only, mixed directions
+    //Cycled by DOM order; vertical only, all from below — a card starting above its slot climbed
+    //over the manifesto on short screens
     scatterPattern: [
         { y: '65vw', x: '0vw', rot: 0 },
-        { y: '-22vw', x: '0vw', rot: 0 },
+        { y: '22vw', x: '0vw', rot: 0 },
         { y: '82vw', x: '0vw', rot: 0 },
-        { y: '-30vw', x: '0vw', rot: 0 },
+        { y: '30vw', x: '0vw', rot: 0 },
         { y: '70vw', x: '0vw', rot: 0 },
-        { y: '-18vw', x: '0vw', rot: 0 },
+        { y: '18vw', x: '0vw', rot: 0 },
     ],
 
     //Container drift (parallax): grid and column move at different rates

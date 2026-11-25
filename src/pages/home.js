@@ -30,6 +30,8 @@ const STAGES_MOBILE_MEDIA = '(max-width: 991px)'
 const FLOATER_STEPS = [
     { section: '.hero', hidden: true },
     { section: '.manifesto', counter: '1', name: 'Манифест' },
+    //Bento cards belong to the manifesto step — same label, the logo section slides over them
+    { section: '.parallax-sticky', counter: '1', name: 'Манифест' },
     { section: '.section-logo', counter: '2', name: 'Партнёры' },
     { section: '.section-cases', counter: '3', name: 'Кейсы' },
     { section: '.partner', hidden: true },

@@ -44,9 +44,9 @@ const DOT_SELECTOR = '.stages_dot'
 const DOT_FULL_SELECTOR = '.stages_dot-full'
 const DOT_DURATION = 0.3
 
-//First stage — plays once the card comes into view after the page reveal
-const INTRO_TRIGGER_SELECTOR = '.stages_cards'
-const INTRO_START = 'top 80%'
+//First stage — plays as the section arrives, right after its background starts fading in
+//(StagesBackgroundReveal: section top at the viewport bottom)
+const INTRO_START = 'top 90%'
 
 const DIRECTION_DOWN = 'up' //scrolling down: lines travel up
 const DIRECTION_UP = 'down'
@@ -57,6 +57,8 @@ const BACKGROUND_COLOR = '#FFFBF2'
 //Image reveals
 const IMAGE_RISE = '8.33vw'
 const IMAGE_BLUR_PX = 12
+const IMAGE_START_SCALE = 1.08
+const IMAGE_LAYER_CLASS = 'stages_img-layer'
 const IMAGE_PARALLAX_PERCENT = 6
 const RIGHT_GALLERY_SELECTOR = '.stages_gallery-right'
 const RIGHT_IMAGE_PARALLAX_PERCENT = 3 //right gallery drifts slower
@@ -119,29 +121,32 @@ export class Stages extends Module {
         backgroundTimeline.to('.about-wrapper', { backgroundColor: BACKGROUND_COLOR, duration: 0.7 }, 0.3)
     }
 
-    //Images — blur reveal on approach + slight alternating parallax
+    //Images — blur reveal on approach + slight alternating parallax.
+    //.stages_img holds its picture as a background: the picture moves into an inner layer
+    //(createImageLayer), so scale + blur happen inside the image's own rounded, clipped box —
+    //the blur's edge is cut clean at the corners instead of bleeding out or squaring them off.
+    //The box itself only rises, fades and drifts
 
     buildImageReveals() {
         let images = [...this.section.querySelectorAll('.stages_img')]
+        this.imageLayers = []
 
         images.forEach((image, index) => {
-            image.style.backfaceVisibility = 'hidden' //blur renders as squares on retina without this
+            let layer = this.createImageLayer(image)
 
+            let revealScrollTrigger = {
+                trigger: image,
+                start: 'top 92%',
+                end: 'top 40%',
+                scrub: 2.5,
+            }
             this.animate(gsap.fromTo(image,
-                { y: IMAGE_RISE, opacity: 0, scale: 1.08, filter: `blur(${IMAGE_BLUR_PX}px)` },
-                {
-                    y: 0,
-                    opacity: 1,
-                    scale: 1,
-                    filter: 'blur(0px)',
-                    ease: 'power3.out',
-                    scrollTrigger: {
-                        trigger: image,
-                        start: 'top 92%',
-                        end: 'top 40%',
-                        scrub: 2.5,
-                    },
-                }
+                { y: IMAGE_RISE, opacity: 0 },
+                { y: 0, opacity: 1, ease: 'power3.out', scrollTrigger: revealScrollTrigger }
+            ))
+            this.animate(gsap.fromTo(layer,
+                { scale: IMAGE_START_SCALE, filter: `blur(${IMAGE_BLUR_PX}px)` },
+                { scale: 1, filter: 'blur(0px)', ease: 'power3.out', scrollTrigger: { ...revealScrollTrigger } }
             ))
 
             let parallaxPercent = image.closest(RIGHT_GALLERY_SELECTOR) ? RIGHT_IMAGE_PARALLAX_PERCENT : IMAGE_PARALLAX_PERCENT
@@ -157,6 +162,34 @@ export class Stages extends Module {
                 },
             }))
         })
+    }
+
+    //The image's background copied onto an absolute inner layer, the image's own background
+    //switched off; the image clips the layer to its radius. isolation: Safari otherwise ignores
+    //the radius clip on a filtered / transformed child
+    createImageLayer(image) {
+        let computed = getComputedStyle(image)
+        let layer = document.createElement('div')
+        layer.className = IMAGE_LAYER_CLASS
+        Object.assign(layer.style, {
+            position: 'absolute',
+            inset: '0',
+            backgroundImage: computed.backgroundImage,
+            backgroundSize: computed.backgroundSize,
+            backgroundPosition: computed.backgroundPosition,
+            backgroundRepeat: computed.backgroundRepeat,
+            backfaceVisibility: 'hidden', //blur renders as squares on retina without this
+            willChange: 'transform, filter',
+            pointerEvents: 'none',
+        })
+
+        if (computed.position === 'static') image.style.position = 'relative'
+        image.style.overflow = 'hidden'
+        image.style.isolation = 'isolate'
+        image.style.backgroundImage = 'none'
+        image.prepend(layer)
+        this.imageLayers.push({ image, layer })
+        return layer
     }
 
     //Setup Helpers
@@ -215,9 +248,8 @@ export class Stages extends Module {
     }
 
     bindIntro() {
-        let introTrigger = this.section.querySelector(INTRO_TRIGGER_SELECTOR) ?? this.section
         this.animate(ScrollTrigger.create({
-            trigger: introTrigger,
+            trigger: this.section,
             start: INTRO_START,
             once: true,
             onEnter: () => {
@@ -457,5 +489,15 @@ export class Stages extends Module {
         })
         this.dotFulls = []
         super.destroy()
+        //Images back to their own Webflow background
+        this.imageLayers?.forEach(({ image, layer }) => {
+            layer.remove()
+            image.style.removeProperty('position')
+            image.style.removeProperty('overflow')
+            image.style.removeProperty('isolation')
+            image.style.removeProperty('background-image')
+            gsap.set(image, { clearProps: 'transform,opacity' })
+        })
+        this.imageLayers = []
     }
 }

@@ -34,7 +34,7 @@ const FLIP_CLOCK_CLASS = 'is-flip-clock' //on the value wrapper — main.css dra
 const DOT_ACTIVE_CLASS = 'is-active'
 const BUTTON_HIDDEN_CLASS = 'is-hidden'
 
-const AUTO_ADVANCE_SECONDS = 20
+const AUTO_ADVANCE_SECONDS = 7
 const VISIBILITY_THRESHOLD = 0.2
 
 //Flip — the handoff's 0.8s, linear like its keyframes

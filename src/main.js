@@ -42,6 +42,8 @@ import { FloatingButtonReveal } from './modules/FloatingButtonReveal'
 import { FooterCtaMorph } from './modules/FooterCtaMorph'
 import { FloatingCtaFooterJump } from './modules/FloatingCtaFooterJump'
 import { SectionMarkerReveal } from './modules/SectionMarkerReveal'
+import { ButtonArrowRoll } from './modules/ButtonArrowRoll'
+import { FooterAnchorScroll } from './modules/FooterAnchorScroll'
 import { HomePage } from './pages/home'
 import { CasesPageScript } from './pages/cases'
 import { CaseStudyPage } from './pages/case-study'
@@ -97,6 +99,8 @@ const PAGE_MODULE_CLASSES = [
     FloatingButtonReveal,
     FooterCtaMorph, //after FooterIntro + FloatingButtonReveal — follows the form's rise, morphs the floating pill
     SectionMarkerReveal,
+    ButtonArrowRoll,
+    FooterAnchorScroll,
 ]
 
 //Page modules left out on specific namespaces

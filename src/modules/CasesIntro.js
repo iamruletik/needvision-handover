@@ -18,17 +18,23 @@ const TRIGGER_START = 'top 20%'
 
 //Sequence — tag first, cards after, fraction + button last
 const CARDS_DELAY = 0.15
-const FOOTER_DELAY = 0.3
+const FOOTER_DELAY = 0.2
 
 const DURATION = 1.2
 const EASE = 'expo.out'
+
+//Pagination (fraction + button) — shorter and evener than the cards: expo.out's long tail made
+//the button seem to land with a snap
+const FOOTER_DURATION = 0.7
+const FOOTER_EASE = 'power2.out'
+const FOOTER_STAGGER = 0.06
 
 //Cards
 const CARD_OFFSET_X = '30vw'
 const CARD_STAGGER = 0.08
 
 //Button
-const BUTTON_OFFSET_Y = '2vw'
+const BUTTON_OFFSET_Y = '1rem'
 
 //Pagination (fraction + button) hides again when scrolled back above the trigger and replays
 //on the next enter. Cards and tag stay — one-time intro
@@ -106,8 +112,8 @@ export class CasesIntro extends Module {
     playFooterIn(delay) {
         this.footerTween?.kill()
         let timeline = gsap.timeline({ delay })
-        if (this.fraction) timeline.to(this.fraction, { opacity: 1, duration: DURATION, ease: EASE }, 0)
-        if (this.button) timeline.to(this.button, { y: 0, opacity: 1, duration: DURATION, ease: EASE }, 0)
+        if (this.fraction) timeline.to(this.fraction, { opacity: 1, duration: FOOTER_DURATION, ease: FOOTER_EASE }, 0)
+        if (this.button) timeline.to(this.button, { y: 0, opacity: 1, duration: FOOTER_DURATION, ease: FOOTER_EASE, force3D: true }, FOOTER_STAGGER)
         this.footerTween = this.animate(timeline)
     }
 

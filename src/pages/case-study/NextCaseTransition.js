@@ -39,12 +39,23 @@ const PILL_OUT_START = 0.9
 const COMPLETE_PROGRESS = 0.999
 
 //Rise and grow (pull phase) — the stage starts at half size, its top edge just at the bottom of
-//the screen (center at 50 + 75 = 125% of the viewport, half height 25%). The growth finishes
-//early, the rise takes the whole phase — so the move reads slower than the scale
+//the screen. The growth finishes early, the rise takes the whole phase — so the move reads slower
+//than the scale. ≤991 it's full width from the start and only rises.
+//"Bottom of the screen" = the large viewport (100lvh): the stage is 100svh tall, and on mobile
+//the browser bar hiding makes the screen taller than that — measured against svh, the stage's
+//top showed early
 const STAGE_START_SCALE = 0.5
-const STAGE_START_Y_PERCENT = 75
+const STAGE_MOBILE_MEDIA = '(max-width: 991px)'
+const STAGE_MOBILE_START_SCALE = 1
 const STAGE_SCALE_SHARE = 0.7 //of the pull phase, where the stage reaches full size
 const STAGE_EASE = 'none'
+
+//Pill — slides up from below the screen, back down at the end. Through the CSS `translate`
+//property (--keep-scrolling-shift, main.css), so Webflow's own transform on it stays untouched
+const PILL_SHIFT_PROPERTY = '--keep-scrolling-shift'
+const PILL_OFFSCREEN_MARGIN_PX = 24 //past the edge, so its shadow / blur is gone too
+const PILL_IN_EASE = 'power3.out'
+const PILL_OUT_EASE = 'power3.in'
 
 //The page content held during the hold phase — the container's own shell (the hero has one inside)
 const SHELL_SELECTOR = '[data-barba="container"] > .casepage_shell'
@@ -132,6 +143,7 @@ export class NextCaseTransition extends Module {
                 start: 'top bottom',
                 end: 'max',
                 scrub: true,
+                invalidateOnRefresh: true,
                 onToggle: ({ isActive }) => document.documentElement.classList.toggle(PULLING_CLASS, isActive),
                 onUpdate: ({ progress }) => this.onProgress(progress),
             },
@@ -139,12 +151,22 @@ export class NextCaseTransition extends Module {
 
         //Pull phase — the stage sits invisible below the screen through the hold
         let pullDuration = 1 - HOLD_END
-        timeline.fromTo(this.stage, { scale: STAGE_START_SCALE }, { scale: 1, duration: pullDuration * STAGE_SCALE_SHARE, ease: STAGE_EASE }, HOLD_END)
-        timeline.fromTo(this.stage, { yPercent: STAGE_START_Y_PERCENT }, { yPercent: 0, duration: pullDuration, ease: STAGE_EASE }, HOLD_END)
+        let startScale = window.matchMedia(STAGE_MOBILE_MEDIA).matches ? STAGE_MOBILE_START_SCALE : STAGE_START_SCALE
+        if (startScale < 1) {
+            timeline.fromTo(this.stage, { scale: startScale }, { scale: 1, duration: pullDuration * STAGE_SCALE_SHARE, ease: STAGE_EASE }, HOLD_END)
+        } else {
+            gsap.set(this.stage, { scale: 1 })
+        }
+        timeline.fromTo(this.stage, { y: () => this.stageStartY(startScale) }, { y: 0, duration: pullDuration, ease: STAGE_EASE }, HOLD_END)
 
         if (this.pill) {
-            timeline.fromTo(this.pill, { autoAlpha: 0 }, { autoAlpha: 1, duration: PILL_IN_END }, 0)
-            timeline.to(this.pill, { autoAlpha: 0, duration: 1 - PILL_OUT_START }, PILL_OUT_START)
+            //Visible throughout — off screen is what hides it
+            gsap.set(this.pill, { autoAlpha: 1 })
+            timeline.fromTo(this.pill,
+                { [PILL_SHIFT_PROPERTY]: () => `${this.pillOffscreenShift()}px` },
+                { [PILL_SHIFT_PROPERTY]: '0px', duration: PILL_IN_END, ease: PILL_IN_EASE }, 0)
+            timeline.to(this.pill,
+                { [PILL_SHIFT_PROPERTY]: () => `${this.pillOffscreenShift()}px`, duration: 1 - PILL_OUT_START, ease: PILL_OUT_EASE }, PILL_OUT_START)
         }
         if (this.fill) {
             timeline.fromTo(this.fill, { scaleX: 0 }, { scaleX: FILL_AT_HOLD_END, duration: HOLD_END }, 0)
@@ -166,6 +188,34 @@ export class NextCaseTransition extends Module {
         }
         let heldDistance = Math.min(progress, HOLD_END) * this.runway.offsetHeight
         gsap.set(this.shell, { y: heldDistance })
+    }
+
+    //100lvh in px — the tallest the screen gets once the mobile browser bar hides. Measured on a
+    //probe (lvh: Safari 15.4+, older falls back to the current inner height)
+    largeViewportHeight() {
+        let probe = document.createElement('div')
+        probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100lvh;visibility:hidden;pointer-events:none'
+        document.body.appendChild(probe)
+        let height = probe.offsetHeight
+        probe.remove()
+        return Math.max(height, window.innerHeight)
+    }
+
+    //Stage scaled around its center: its visible top = (1 - scale) / 2 of its height, plus y.
+    //y that puts that top exactly at the large viewport's bottom
+    stageStartY(scale) {
+        let stageHeight = this.stage?.offsetHeight ?? 0
+        return this.largeViewportHeight() - stageHeight * (1 - scale) / 2
+    }
+
+    //Shift that takes the pill's top just past the large viewport's bottom (its layout top —
+    //the shift itself is a translate, not in getBoundingClientRect's way: read with it at 0)
+    pillOffscreenShift() {
+        let currentShift = this.pill.style.getPropertyValue(PILL_SHIFT_PROPERTY)
+        this.pill.style.setProperty(PILL_SHIFT_PROPERTY, '0px')
+        let top = this.pill.getBoundingClientRect().top
+        this.pill.style.setProperty(PILL_SHIFT_PROPERTY, currentShift)
+        return Math.max(0, this.largeViewportHeight() - top) + PILL_OFFSCREEN_MARGIN_PX
     }
 
     //Share of the stage's (scaled) height inside the viewport
@@ -215,7 +265,7 @@ export class NextCaseTransition extends Module {
 
         this.timeline.scrollTrigger?.kill(false)
         this.timeline.progress(1)
-        gsap.set(this.stage, { scale: 1, yPercent: 0 })
+        gsap.set(this.stage, { scale: 1, y: 0 })
         //No transform at all for the swap — renders exactly like the real hero (inline, so the
         //CSS scale(0) start pose doesn't come back)
         this.stage.classList.add(STAGE_FULL_SIZE_CLASS)
@@ -245,6 +295,7 @@ export class NextCaseTransition extends Module {
         document.documentElement.classList.remove(PULLING_CLASS)
         let animated = [this.pill, this.fill, this.shell].filter(Boolean)
         if (animated.length) gsap.set(animated, { clearProps: 'opacity,visibility,transform' })
+        this.pill?.style.removeProperty(PILL_SHIFT_PROPERTY)
 
         //Handed off: NextCaseSwap owns the stage (and its copy's reveal) now and disposes it after the swap
         if (!this.isHandedOff) {

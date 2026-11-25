@@ -12,6 +12,8 @@ const ARC_ID = 'theDotArc'
 const DOT_ID = 'theDot'
 const LOGO_ID = 'header-logo-actual'
 const LOGO_SMALL_CLASS = 'is-small'
+//Over the footer video (every page but company) the arc stands upright and ignores the mouse
+const FOOTER_VIDEO_SELECTOR = '.footer-video'
 
 //Rotation, degrees — BASE matches the embed's rotate(-150): dash centred straight up
 const BASE_ROTATION = -150
@@ -48,8 +50,10 @@ export class LogoArc extends Module {
         if (!window.matchMedia('(hover: hover)').matches) return
 
         this.lastPointerX = null
+        this.isOverFooterVideo = false
         this.listen(window, 'pointermove', (event) => {
             this.lastPointerX = event.clientX
+            this.isOverFooterVideo = this.isPointOverFooterVideo(event.clientX, event.clientY)
             this.follow()
         }, { passive: true })
 
@@ -64,6 +68,16 @@ export class LogoArc extends Module {
         return !this.logo.classList.contains(LOGO_SMALL_CLASS)
     }
 
+    //By rect, not event target — the footer's form and text sit over the video. The video lives in
+    //the page container (swapped by Barba), so it's looked up fresh; display: none on company →
+    //empty rect, never matches
+    isPointOverFooterVideo(x, y) {
+        let video = document.querySelector(FOOTER_VIDEO_SELECTOR)
+        if (!video) return false
+        let rect = video.getBoundingClientRect()
+        return rect.width > 0 && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+    }
+
     //-1 (far left of the dot) … 1 (far right)
     pointerSide() {
         if (this.lastPointerX === null) return 0
@@ -76,7 +90,8 @@ export class LogoArc extends Module {
     //Animations
 
     follow() {
-        let tilt = this.isLogoBig() ? this.pointerSide() * MAX_TILT * TILT_DIRECTION : 0
+        let isTracking = this.isLogoBig() && !this.isOverFooterVideo
+        let tilt = isTracking ? this.pointerSide() * MAX_TILT * TILT_DIRECTION : 0
         this.rotateTo(BASE_ROTATION + tilt)
     }
 

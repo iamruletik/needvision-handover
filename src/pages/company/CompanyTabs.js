@@ -44,7 +44,7 @@ const INTRO_TEXT_DELAY = 0.1
 
 const DESCRIPTION_DELAY = 0.1 //description trails the heading, in and out
 
-//Counter — "01 // 11": active tab's position of the total, switches with the buttons.
+//Counter — "01 // 11": active tab's position of the total, swaps with the text (SplitBlurReveal).
 //Hidden ≤991 in Webflow
 const COUNTER_SELECTOR = '.companypage_tabs-index-text'
 const COUNTER_PAD = 2
@@ -74,7 +74,7 @@ export class CompanyTabs extends Module {
 
         this.counter = this.section.querySelector(COUNTER_SELECTOR)
         this.originalTexts = { heading: this.heading.innerHTML, description: this.description.innerHTML, counter: this.counter?.textContent }
-        this.updateCounter()
+        if (this.counter) this.counter.textContent = this.counterText(this.activeButton)
         this.isRevealed = false
         this.isInView = false
         this.hasIntroPlayed = false
@@ -83,6 +83,8 @@ export class CompanyTabs extends Module {
         //Both start hidden (lines below their masks, blurred) until the intro plays them
         this.headingReveal = new SplitBlurReveal(this.heading, TEXT_REVEAL_OPTIONS).mount()
         this.descriptionReveal = new SplitBlurReveal(this.description, { ...TEXT_REVEAL_OPTIONS, delay: DESCRIPTION_DELAY }).mount()
+        //Counter swaps with the text — same reveal, leads the heading
+        this.counterReveal = this.counter ? new SplitBlurReveal(this.counter, TEXT_REVEAL_OPTIONS).mount() : null
 
         gsap.set(this.buttons, { autoAlpha: 0 })
         if (this.visual) gsap.set(this.visual, { y: VISUAL_OFFSET_PX, autoAlpha: 0 })
@@ -123,21 +125,19 @@ export class CompanyTabs extends Module {
             item.setAttribute('aria-pressed', isActive ? 'true' : 'false')
         })
         this.activeButton = button
-        this.updateCounter()
 
         if (!this.isAnimating) this.playSwap()
     }
 
     //Helpers
 
-    updateCounter() {
-        if (!this.counter) return
-        let position = String(this.buttons.indexOf(this.activeButton) + 1).padStart(COUNTER_PAD, '0')
-        this.counter.textContent = `${position}${COUNTER_SEPARATOR}${this.buttons.length}`
+    counterText(button) {
+        let position = String(this.buttons.indexOf(button) + 1).padStart(COUNTER_PAD, '0')
+        return `${position}${COUNTER_SEPARATOR}${this.buttons.length}`
     }
 
     textReveals() {
-        return [this.headingReveal, this.descriptionReveal]
+        return [this.counterReveal, this.headingReveal, this.descriptionReveal].filter(Boolean)
     }
 
     imageFor(button) {
@@ -150,6 +150,7 @@ export class CompanyTabs extends Module {
     renderTab(button) {
         this.headingReveal.setText(button.dataset.tabTitle || button.textContent.trim())
         this.descriptionReveal.setText(button.dataset.tabDescription || '')
+        this.counterReveal?.setText(this.counterText(button))
         this.displayedButton = button
     }
 
@@ -233,6 +234,7 @@ export class CompanyTabs extends Module {
         if (this.visual) gsap.set(this.visual, { clearProps: 'transform,opacity,visibility' })
         this.headingReveal?.destroy()
         this.descriptionReveal?.destroy()
+        this.counterReveal?.destroy()
         if (this.originalTexts) {
             this.heading.innerHTML = this.originalTexts.heading
             this.description.innerHTML = this.originalTexts.description

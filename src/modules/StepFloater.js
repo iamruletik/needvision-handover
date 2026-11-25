@@ -94,20 +94,35 @@ export class StepFloater extends Module {
 
     //Triggers
 
+    //Sections can overlap (sticky ones get covered by the next): when the active step's range is
+    //left, the floater falls back to another step still active, instead of keeping stale text
     createStepTriggers() {
-        this.steps.forEach((step, index) => {
+        this.stepTriggers = this.steps.map((step, index) => {
             let section = this.firstRendered(step.section)
-            if (!section) return
+            if (!section) return null
 
-            this.animate(ScrollTrigger.create({
+            return this.animate(ScrollTrigger.create({
                 trigger: section,
                 start: STEP_TRIGGER_START,
                 end: STEP_TRIGGER_END,
                 onToggle: (self) => {
-                    if (self.isActive) this.goToStep(index, self.direction)
+                    if (self.isActive) {
+                        this.goToStep(index, self.direction)
+                        return
+                    }
+                    if (index !== this.activeStepIndex) return
+                    let fallbackIndex = this.lastActiveStepIndex()
+                    if (fallbackIndex !== -1) this.goToStep(fallbackIndex, self.direction)
                 },
             }))
         })
+    }
+
+    lastActiveStepIndex() {
+        for (let index = this.stepTriggers.length - 1; index >= 0; index--) {
+            if (this.stepTriggers[index]?.isActive) return index
+        }
+        return -1
     }
 
     //No end — hidden from the start point to the bottom of the page
@@ -196,7 +211,12 @@ export class StepFloater extends Module {
         this.updateVisibility()
         if (step.hidden || index === this.renderedStepIndex) return
 
+        //Two sections sharing a label (e.g. manifesto + bento) — no roll between them
+        let renderedStep = this.steps[this.renderedStepIndex]
+        let isSameText = !wasHidden && renderedStep && renderedStep.counter === step.counter && renderedStep.name === step.name
         this.renderedStepIndex = index
+        if (isSameText) return
+
         this.swapTo(step, direction, { isFresh: wasHidden })
     }
 

@@ -6,7 +6,8 @@
       "Bash(awk '/\\\\.preloader_icon \\\\{/,/\\\\}/')",
       "mcp__claude_ai_Webflow__data_assets_tool",
       "mcp__claude_ai_Webflow__data_element_builder",
-      "mcp__claude_ai_Webflow__data_style_tool"
+      "mcp__claude_ai_Webflow__data_style_tool",
+      "mcp__claude_ai_Webflow__data_element_tool"
     ]
   }
 }
