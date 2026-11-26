@@ -72,6 +72,11 @@ export class MenuReveal extends Module {
         this.onClosed = null
         this.masks = []
 
+        this.backdrop = document.createElement('div')
+        this.backdrop.className = 'header-menu-backdrop'
+        this.backdrop.setAttribute('aria-hidden', 'true')
+        this.container.closest('.header-menu-container')?.prepend(this.backdrop)
+
         this.applyClosedState()
     }
 
@@ -192,6 +197,7 @@ export class MenuReveal extends Module {
         this.animatedElements = [...texts, ...labels, ...numberUnits, ...moneyLabels, ...dollarSigns, ...smallNumbers, ...gauges]
 
         this.timeline = gsap.timeline({ paused: true })
+        this.timeline.to(this.backdrop, { opacity: 1, duration: CONTAINER_DURATION, ease: CONTAINER_EASE }, 0)
 
         this.timeline.fromTo(this.container,
             { clipPath: this.clipPath(100) },
@@ -257,6 +263,7 @@ export class MenuReveal extends Module {
         })
         this.masks = []
 
+        this.backdrop?.remove()
         if (this.container) gsap.set(this.container, { clearProps: 'clipPath,visibility' })
     }
 }

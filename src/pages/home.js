@@ -33,7 +33,7 @@ const FLOATER_STEPS = [
     //Bento cards belong to the manifesto step — same label, the logo section slides over them
     { section: '.parallax-sticky', counter: '1', name: 'Манифест' },
     { section: '.section-logo', counter: '2', name: 'Партнёры' },
-    { section: '.section-cases', counter: '3', name: 'Кейсы' },
+    { section: '.section-cases', counter: '3', name: 'Кейсы', whiteFloater: true },
     { section: '.partner', hidden: true },
     { section: '.stages', counter: '4', name: 'Процесс' },
     { section: '.team', counter: '5', name: 'Команда' },

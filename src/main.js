@@ -58,7 +58,7 @@ import { NotFoundPage } from './pages/not-found'
 const smoothScroll = new SmoothScroll()
 const eyeTransition = new EyeTransition()
 const preloader = new Preloader(smoothScroll).mount() //first load only, Barba uses the eye
-const headerCompact = new HeaderCompact().mount() //header lives outside the Barba container
+const headerCompact = new HeaderCompact(smoothScroll).mount() //header lives outside the Barba container
 new HeaderHeight().mount() //--layout--header-height for sections that clear the fixed header
 const menuLinks = new MenuLinks().mount() //menu lives in the header — told the page on every swap
 const menuMoney = new MenuMoney().mount() //live counters + speedometer in the menu

@@ -98,6 +98,7 @@ export class NextCaseTransition extends Module {
         let stage = document.createElement('div')
         stage.className = STAGE_CLASS
         stage.setAttribute('aria-hidden', 'true')
+        stage.inert = true
         document.body.appendChild(stage)
         return stage
     }

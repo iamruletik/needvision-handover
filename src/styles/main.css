@@ -372,6 +372,11 @@
 .check-again-arrow__track {
     transition: transform var(--check-again-duration) var(--check-again-ease);
 }
+@media (max-width: 991px) {
+    .content-column-left.is-footer .footer_action-link-2 {
+        pointer-events: auto;
+    }
+}
 .footer_action-link-2 > div {
     transition: opacity var(--check-again-duration) var(--check-again-ease);
 }
@@ -489,7 +494,8 @@
    Clone waits one width + gap to the left; hovering the button moves the track right by the
    same amount: the arrow leaves through the right edge, the clone slides in from the left */
 .button-clear,
-.button-grey {
+.button-grey,
+.casepage_hero-back .casepage_chip {
     --button-arrow-duration: 0.5s;
     --button-arrow-ease: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out — same as the header arrow */
     --button-arrow-gap: 25%;
@@ -508,10 +514,16 @@
     top: 0;
     left: calc(-100% - var(--button-arrow-gap));
 }
+.casepage_hero-back .button-arrow-roll__clone {
+    left: calc(100% + var(--button-arrow-gap));
+}
 @media (hover: hover) {
     .button-clear:hover .button-arrow-roll__track,
     .button-grey:hover .button-arrow-roll__track {
         transform: translateX(calc(100% + var(--button-arrow-gap)));
+    }
+    .casepage_hero-back .casepage_chip:hover .button-arrow-roll__track {
+        transform: translateX(calc(-100% - var(--button-arrow-gap)));
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -529,6 +541,38 @@
     font: inherit !important;
 }
 
+
+/* Let the manifesto grow on short screens and keep the next section in normal flow. */
+.manifesto:has(+ .stacking-wrapper) {
+    height: auto;
+    min-height: 150vh;
+}
+
+.manifesto:has(+ .stacking-wrapper) > .manifesto_header {
+    flex-shrink: 0;
+    height: auto;
+    min-height: 100vh;
+}
+
+.manifesto + .stacking-wrapper {
+    margin-top: 0;
+}
+
+/* Contain the moving cards at the bento section boundary without breaking sticky positioning. */
+.manifesto + .stacking-wrapper > .section-parallax {
+    overflow: clip;
+}
+
+/* Keep the Cases step white over its background imagery. */
+.companypage_step-floater.is-step-floater-white {
+    mix-blend-mode: normal;
+}
+
+.is-step-floater-white .companypage_step-floater_content,
+.is-step-floater-white .companypage_step-floater-counter,
+.is-step-floater-white .companypage_step-floater-name {
+    color: #fff;
+}
 
 /* Header Compact — HeaderCompact.js moves the big logo out of the column above this
    container; this padding replaces the height it reserved, so the descriptor keeps its offset */
@@ -673,6 +717,20 @@
 }
 .header-menu-content-container {
     pointer-events: auto;
+}
+html.is-menu-scrollbar-compensated body {
+    padding-right: var(--menu-scrollbar-width);
+}
+html.is-menu-scrollbar-compensated :is(.header-wrapper, .header-counter-wrapper, .footer-container, .floating-button-wrapper) {
+    right: var(--menu-scrollbar-width);
+}
+.header-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: rgb(0 0 0 / 75%);
+    opacity: 0;
+    pointer-events: none;
 }
 
 
@@ -843,10 +901,13 @@ textarea#field {
 }
 
 /* Contact Form — Webflow's success / error boxes as plain black text, no colored panels */
-.contacts-form-wrap .w-form-done,
 .contacts-form-wrap .w-form-fail {
     margin-top: 1rem;
     padding: 0;
+}
+
+.contacts-form-wrap .w-form-done,
+.contacts-form-wrap .w-form-fail {
     background-color: transparent;
     color: var(--main-colours--black);
     text-align: left;
@@ -861,6 +922,10 @@ textarea#field {
 
 
 /*Company CSS*/
+.companypage_cards-wrapper > .companypage_cards-content {
+    position: sticky;
+    top: min(0px, calc(var(--company-cards-headline-height, 100vh) - var(--company-cards-content-height, 100vh)));
+}
 
 /* Steps Year Counter — StepsYearCounter.js builds prefix + one masked digit slot.
    Prefix and digits share one line box height so the slot mask lines up with the text */
@@ -890,26 +955,51 @@ textarea#field {
     overflow: hidden;
 }
 
-/* Desktop only — ≤991 the grid is one column and the -10rem pulls card 4 into card 3 */
-@media (min-width: 992px) {
-    .card-grid-item:nth-child(1) {
-        margin-top: 14rem;
-        margin-left: 1rem;
-    }
-
-    .card-grid-item:nth-child(4) {
-        margin-top: -10rem;
-        place-self: center;
-    }
-
-    .card-grid-item:nth-child(3) {
-        place-self: end;
-        margin-top: 10rem;
-    }
+/* Company Card Alignment */
+.companypage_cards-card-grid {
+    width: 100%;
 }
 
+.companypage_cards-card-grid > .card-grid-item:is(:nth-child(1), :nth-child(4)) {
+    justify-self: end;
+    margin-right: 1rem;
+}
 
+.companypage_cards-card-grid > .card-grid-item:nth-child(2) {
+    justify-self: start;
+    margin-left: 1rem;
+}
 
+.companypage_cards-card-grid > .card-grid-item:nth-child(3) {
+    justify-self: center;
+    margin-left: 0;
+}
+
+@media (min-width: 992px) {
+    .companypage_cards-card-grid > .card-grid-item:nth-child(1) {
+        grid-area: 1 / 2;
+        width: 100%;
+        margin-top: 14rem;
+    }
+
+    .companypage_cards-card-grid > .card-grid-item:nth-child(2) {
+        grid-area: 1 / 1;
+        width: 100%;
+    }
+
+    .companypage_cards-card-grid > .card-grid-item:nth-child(3) {
+        grid-area: 2 / 1 / 3 / -1;
+        align-self: end;
+        margin-top: 10rem;
+    }
+
+    .companypage_cards-card-grid > .card-grid-item:nth-child(4) {
+        grid-area: 2 / 2;
+        align-self: center;
+        margin-top: -10rem;
+        width: 100%;
+    }
+}
 
 
 /* Floating Button — sign svg slides to -58% (one pattern repeat), snaps back, loops. Pure CSS. */
@@ -1133,15 +1223,28 @@ textarea#field {
 }
 
 
-/* Cases Backgrounds Shade — ink at 20% on top fading out by 20%, clear through the middle half,
-   back to 20% over the last 30%. Above the crossfading images, never takes the pointer */
+/* Cases background shade above the crossfading images. */
 :root {
     --image-shade-gradient: linear-gradient(to bottom,
-            rgba(4, 1, 1, 0.2) 0%,
-            rgba(4, 1, 1, 0) 20%,
+            rgba(4, 1, 1, 0.55) 0%,
+            rgba(4, 1, 1, 0) 35%,
             rgba(4, 1, 1, 0) 70%,
             rgba(4, 1, 1, 0.2) 100%);
 }
+/* Keep the shade inside the background layer and the header above the click zone. */
+.section-cases .case_bg-images {
+    z-index: 0;
+    pointer-events: none;
+}
+
+.section-cases .cases-header {
+    z-index: 3;
+}
+
+.casepage_hero .casepage_hero-overlay {
+    background-image: var(--image-shade-gradient);
+}
+
 .case_bg-images::after {
     content: '';
     position: absolute;
@@ -1485,6 +1588,10 @@ textarea#field {
     transform: scaleX(0);
     transform-origin: 0% 50%;
 }
+.casepage_next[data-next-case] {
+    pointer-events: none;
+}
+
 .next-case-stage {
     position: fixed;
     top: 0;
@@ -1712,4 +1819,14 @@ html {
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
     }
+}
+
+/* Bento meeting CTA */
+.bento_circle-btn:is(:hover, :focus-visible) {
+    background-color: #fff;
+    color: #000;
+}
+
+.bento_circle-btn:is(:hover, :focus-visible) .bento_circle-text {
+    color: inherit;
 }

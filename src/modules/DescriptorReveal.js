@@ -14,8 +14,6 @@ const BLUR_PX = 12
 //so 0.9 of the time ≈ mostly faded
 const HIDE_TIME_SCALE = 1.6
 const HANDOFF_EXIT_SHARE = 0.9
-//How long a full hide takes — HeaderCompact holds the descriptor in place for this long
-export const DESCRIPTOR_HIDE_SECONDS = DURATION / HIDE_TIME_SCALE
 
 export class DescriptorReveal extends Module {
 

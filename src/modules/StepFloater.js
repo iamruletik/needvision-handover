@@ -17,6 +17,7 @@ import { FloaterHeaderDock } from './FloaterHeaderDock'
 //  section — first rendered match (desktop / mobile copies)
 
 const FLOATER_SELECTOR = '.companypage_step-floater'
+const WHITE_FLOATER_CLASS = 'is-step-floater-white'
 const CONTENT_SELECTOR = '.companypage_step-floater_content'
 const COUNTER_SELECTOR = '.companypage_step-floater-counter'
 const NAME_SELECTOR = '.companypage_step-floater-name'
@@ -206,6 +207,7 @@ export class StepFloater extends Module {
         let step = this.steps[index]
         if (!step) return
 
+        this.floater.classList.toggle(WHITE_FLOATER_CLASS, Boolean(step.whiteFloater))
         let wasHidden = this.isStepHidden || this.renderedStepIndex === -1
         this.isStepHidden = Boolean(step.hidden)
         this.updateVisibility()
@@ -317,6 +319,7 @@ export class StepFloater extends Module {
             if (this.counter) this.counter.textContent = this.originalTexts.counter
             if (this.name) this.name.textContent = this.originalTexts.name
         }
+        this.floater?.classList.remove(WHITE_FLOATER_CLASS)
         if (this.floater) gsap.set(this.floater, { clearProps: 'opacity,visibility' })
 
         super.destroy()

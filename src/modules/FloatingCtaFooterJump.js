@@ -9,7 +9,7 @@ import { Module } from '../core/Module'
 //down to the end — a push the rest of the way.
 //Ignored while the eye is already busy (page transition) or the menu holds the header.
 
-const CTA_SELECTOR = '.floating-button-wrapper .call-to-action'
+const CTA_SELECTOR = '.floating-button-wrapper .call-to-action, .bento_circle-btn'
 const GLIDE_WITHIN_VH = 150
 const GLIDE_DURATION = 1.4 //Lenis' own easing (SmoothScroll, expo out)
 

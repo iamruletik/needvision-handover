@@ -2,7 +2,7 @@ import { gsap, ScrollTrigger, Flip } from '../core/gsap'
 import { Module } from '../core/Module'
 import { ProfitCounter } from './ProfitCounter'
 import { MenuReveal } from './MenuReveal'
-import { DescriptorReveal, DESCRIPTOR_HIDE_SECONDS } from './DescriptorReveal'
+import { DescriptorReveal } from './DescriptorReveal'
 import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 
 //Header compacts on scroll. Persistent — the header lives outside the Barba container,
@@ -25,11 +25,10 @@ import { FOOTER_ZONE_EVENT } from './FooterHeaderColor'
 //  8-9. #header-logo-actual into .small-header-placer + .is-small (Webflow's small size);
 //       .header-content-logo-container-feature gets FEATURE_COMPACT_CLASS (+2rem top
 //       padding, 2.5rem at 991 and down — main.css) to make up the height the big logo stops reserving, and
-//       .descriptor-svg rides the same Flip so it glides instead of jumping
+//       .descriptor-svg rides the same Flip when the menu compacts the header at the top
 //  10.  side elements (.header-content-icon, .header-content-time) move up out of view —
 //       with the scroll / footer / pinned compact, not with a compact the menu forced at the top.
-//       The descriptor's lines sink back into their masks with them (DescriptorReveal, its intro
-//       reversed), except on pinned pages, where it stays shown.
+//       The descriptor fades and blurs with them, except on pinned pages, where it stays shown.
 //       First load: the descriptor waits hidden for the header intro (holdIntro / releaseIntro)
 //Back at the top everything returns to its original parent / position.
 //Over the footer (FooterHeaderColor's FOOTER_ZONE_EVENT) the header spreads too, and compacts
@@ -132,6 +131,11 @@ const PLACER_FILL_VISIBLE = 1
 const PLACER_LINK_PADDING_REM = 0.5 //pill reaches this far past the outer link edges
 
 export class HeaderCompact extends Module {
+
+    constructor(smoothScroll) {
+        super()
+        this.smoothScroll = smoothScroll
+    }
 
     setup() {
         this.casesLink = document.getElementById('header-cases-link')
@@ -306,6 +310,7 @@ export class HeaderCompact extends Module {
 
         let needsCompact = !this.isCompact
         this.isMenuOpen = true
+        if (!this.isMenuLocked) this.lockMenuScroll()
         this.isMenuLocked = true
         //No-op when already compact from scrolling, or still compact from a close in progress.
         //Side elements stay as they are — shown at the top, hidden mid-scroll
@@ -419,9 +424,29 @@ export class HeaderCompact extends Module {
 
     //Menu fully closed: scroll drives the header again, starting from where it is now.
     //Pinned pages stay compact
+    lockMenuScroll() {
+        if (!this.smoothScroll) return
+        let root = document.documentElement
+        let scrollbarWidth = window.innerWidth - root.clientWidth
+        if (scrollbarWidth > 0) {
+            root.style.setProperty('--menu-scrollbar-width', `${scrollbarWidth}px`)
+            root.classList.add('is-menu-scrollbar-compensated')
+        }
+        this.smoothScroll.stop(this)
+    }
+
+    unlockMenuScroll() {
+        let root = document.documentElement
+        this.smoothScroll?.start(this)
+        root.classList.remove('is-menu-scrollbar-compensated')
+        root.style.removeProperty('--menu-scrollbar-width')
+    }
+
     releaseMenuLock() {
         this.isMenuLocked = false
-        this.setCompact(this.shouldBeCompact())
+        this.unlockMenuScroll()
+        let isCompact = this.shouldBeCompact()
+        this.setCompact(isCompact, { movesDescriptor: !isCompact && !this.isSideHidden })
     }
 
     //Takes the element's place in the placer flex row, clips the rise
@@ -440,18 +465,12 @@ export class HeaderCompact extends Module {
         return [this.casesLink, this.menuLink, ...lines]
     }
 
-    //Logo + whatever shifts because of it — measured and animated together. The descriptor only
-    //while it stays shown (menu compact at the top, kept / pinned pages); hidden, it never moves
-    logoFlipTargets() {
-        return [this.logo, this.isDescriptorHidden ? null : this.descriptor].filter(Boolean)
-    }
-
     //Animations
 
     //instant — jump to the end state (pinned pages, screen covered): every tween below is
     //built as usual, then finished on the spot; no click lock, links' color snaps.
     //keepsSideElements — the menu compacting at the top: side elements don't follow
-    setCompact(isCompact, { instant = false, keepsSideElements = false } = {}) {
+    setCompact(isCompact, { instant = false, keepsSideElements = false, movesDescriptor = keepsSideElements } = {}) {
         if (!keepsSideElements) this.setSideHidden(isCompact, { instant })
         if (isCompact === this.isCompact) return
         this.isCompact = isCompact
@@ -459,15 +478,16 @@ export class HeaderCompact extends Module {
         else this.lockClicksDuringTransition()
 
         //States first — captures mid-animation positions, so a reversal mid-way is smooth
-        let logoState = Flip.getState(this.logoFlipTargets())
-        //Descriptor fading out: no glide — it holds where it was until fully faded, then lands
-        //on its new spot unseen. Fading back in: it's already home (snapped while hidden)
-        let isDescriptorHolding = isCompact && this.isDescriptorHidden && this.descriptor
-        let descriptorState = isDescriptorHolding ? Flip.getState(this.descriptor) : null
-        this.descriptorHold?.kill()
-        if (this.descriptor && !isDescriptorHolding) gsap.set(this.descriptor, { clearProps: 'transform' })
+        let logoTargets = [this.logo]
+        if (movesDescriptor && this.descriptor && !this.isDescriptorHidden) logoTargets.push(this.descriptor)
+        let logoState = Flip.getState(logoTargets)
+        //Keep the spread position through scroll compaction, including while the blur plays.
+        let descriptorState = isCompact && !movesDescriptor && !instant && this.descriptor
+            ? Flip.getState(this.descriptor)
+            : null
         let placerStartEdges = this.placerEdgesFromCurrent()
         this.logoFlip?.kill()
+        if (this.descriptor) gsap.set(this.descriptor, { clearProps: 'transform' })
         this.placerTween?.kill()
         this.placerFillTween?.kill()
         //Held for the first reveal — the pill moves but stays unfilled, counter stays down
@@ -504,6 +524,7 @@ export class HeaderCompact extends Module {
         this.invertedTargets().forEach((element) => element.classList.toggle(LINK_INVERTED_CLASS, isCompact))
         this.logo.classList.toggle(LOGO_SMALL_CLASS, isCompact)
         this.featureContainer?.classList.toggle(FEATURE_COMPACT_CLASS, isCompact)
+        if (descriptorState) Flip.fit(this.descriptor, descriptorState, { scale: true })
 
         //9 — logo (+ descriptor), size change as scale so it stays a transform.
         //Spreading: held at its small spot (Flip renders the start state right away) until
@@ -512,11 +533,6 @@ export class HeaderCompact extends Module {
             ? { duration: LOGO_DURATION, ease: LOGO_EASE, scale: true }
             : { duration: LOGO_SPREAD_DURATION, delay: LOGO_SPREAD_DELAY, ease: LOGO_SPREAD_EASE, scale: true }
         ))
-        //steps(1): stays on the start state for the whole hide, jumps to the end at its end
-        if (descriptorState) {
-            this.descriptorHold = this.animate(Flip.from(descriptorState, { duration: DESCRIPTOR_HIDE_SECONDS, ease: 'steps(1)', scale: true }))
-        }
-
         //Placer pill fades in under the links, its edges carry them
         this.placerTween = this.animate(gsap.fromTo(this.linksPlacer,
             { left: placerEdges.from.left, right: placerEdges.from.right },
@@ -556,7 +572,7 @@ export class HeaderCompact extends Module {
         }
 
         //Instant: straight to the end — onCompletes still run (links home, edges back to CSS)
-        if (instant) [this.logoFlip, this.descriptorHold, this.placerTween, this.counterTween].forEach((tween) => tween?.progress(1))
+        if (instant) [this.logoFlip, this.placerTween, this.counterTween].forEach((tween) => tween?.progress(1))
     }
 
     //10 — up out of view / back down; a reversal mid-way turns around from where they are
@@ -714,6 +730,7 @@ export class HeaderCompact extends Module {
     //Cleanup — back to the spread layout, inline Flip styles cleared
 
     destroy() {
+        this.unlockMenuScroll()
         super.destroy()
         if (!this.homes) return
         this.restoreHomes()
@@ -743,7 +760,8 @@ export class HeaderCompact extends Module {
             this.counterMask.parentNode?.insertBefore(this.counterText, this.counterMask)
             this.counterMask.remove()
         }
-        gsap.set([this.casesLink, this.menuLink, ...this.logoFlipTargets()], { clearProps: 'all' })
+        gsap.set([this.casesLink, this.menuLink, this.logo], { clearProps: 'all' })
+        if (this.descriptor) gsap.set(this.descriptor, { clearProps: 'transform' })
         if (this.sideElements?.length) gsap.set(this.sideElements, { clearProps: 'transform' })
         this.isSideHidden = false
         gsap.set(this.linksPlacer, { clearProps: 'left,right' })

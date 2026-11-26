@@ -229,6 +229,7 @@ class GalleryStage extends Module {
         let anchor = this.strips[0]
 
         let baseThumb = cleanClone(this.thumbTemplate)
+        baseThumb.draggable = false
         baseThumb.style.borderStyle = 'solid'
         baseThumb.style.borderColor = this.borderColor
         baseThumb.style.borderWidth = '0px'
@@ -531,6 +532,7 @@ class GalleryStage extends Module {
     //Release snaps the target to the nearest lane and settles with a one-shot tween.
 
     bindDrag() {
+        this.listen(this.track, 'dragstart', (event) => event.preventDefault())
         this.animate(Observer.create({
             target: this.track,
             type: 'touch,pointer',

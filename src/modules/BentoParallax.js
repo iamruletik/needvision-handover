@@ -6,7 +6,6 @@ import { Module } from '../core/Module'
 //  hold    — cards rest centered
 //  phase 2 — cards slide up and out
 //Scrub by design — this is parallax, position follows scroll.
-//Containers drift via y transform (legacy used marginTop = layout reflow every scroll frame).
 //
 //Per-card overrides via Webflow custom attributes (beat the scatter pattern):
 //  data-start-y / data-start-x / data-start-rot — where the card flies in from
@@ -29,7 +28,7 @@ const CONFIG = {
     end: 'top top',
 
     exitY: '-83.33vw',
-    //Every exit distance (exitY, data-end-y, grid / column exit shifts) × this — same scroll,
+    //Every exit distance (exitY or data-end-y) × this — same scroll,
     //shorter travel, slower exit: cards still up as the next section slides over them
     exitDistanceScale: 0.5,
 
@@ -52,12 +51,6 @@ const CONFIG = {
         { y: '70vw', x: '0vw', rot: 0 },
         { y: '18vw', x: '0vw', rot: 0 },
     ],
-
-    //Container drift (parallax): grid and column move at different rates
-    gridEnterShift: '9vw',
-    gridExitShift: '-18vw',
-    columnEnterShift: '7.5vw',
-    columnExitShift: '-15vw',
 
     enterEase: 'power2.out',
     exitEase: 'power2.in',
@@ -111,18 +104,6 @@ export class BentoParallax extends Module {
     //Phase 1 — Scattered Entry
 
     buildEnterPhase(scatterHold) {
-        //Containers drift up from below — covers the whole entry including stagger tail
-        this.timeline.fromTo('.bento_grid',
-            { y: CONFIG.gridEnterShift },
-            { y: 0, duration: this.enterSpan, ease: CONFIG.enterEase },
-            0
-        )
-        this.timeline.fromTo('.bento_column',
-            { y: CONFIG.columnEnterShift },
-            { y: 0, duration: this.enterSpan, ease: CONFIG.enterEase },
-            0
-        )
-
         this.cards.forEach((card, index) => {
             let pattern = CONFIG.scatterEnabled
                 ? CONFIG.scatterPattern[index % CONFIG.scatterPattern.length]
@@ -172,15 +153,6 @@ export class BentoParallax extends Module {
 
     buildExitPhase() {
         let scale = CONFIG.exitDistanceScale
-        this.timeline.to('.bento_grid',
-            { y: this.scaleDistance(CONFIG.gridExitShift, scale), duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
-            this.exitStart
-        )
-        this.timeline.to('.bento_column',
-            { y: this.scaleDistance(CONFIG.columnExitShift, scale), duration: CONFIG.exitDuration, ease: CONFIG.exitEase },
-            this.exitStart
-        )
-
         this.cards.forEach((card) => {
             let endY = this.scaleDistance(card.getAttribute('data-end-y') || CONFIG.exitY, scale)
             let exitDelay = parseFloat(card.getAttribute('data-exit-delay')) || 0

@@ -6,6 +6,7 @@ import { Module } from '../core/Module'
 
 const LINK_SELECTOR = '.footer_action-link-2'
 const TOP_HASHES = ['', '#', '#top']
+const MOBILE_MEDIA = '(max-width: 991px)'
 
 export class FooterAnchorScroll extends Module {
 
@@ -21,9 +22,11 @@ export class FooterAnchorScroll extends Module {
     }
 
     onClick(event, link) {
+        let goesToTopOnMobile = link.closest('.content-column-left') && window.matchMedia(MOBILE_MEDIA).matches
+        let href = goesToTopOnMobile ? '#top' : link.getAttribute('href') ?? ''
         let url
         try {
-            url = new URL(link.getAttribute('href') ?? '', window.location.href)
+            url = new URL(href, window.location.href)
         } catch {
             return
         }

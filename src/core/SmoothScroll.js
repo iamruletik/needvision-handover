@@ -34,6 +34,7 @@ export class SmoothScroll {
         }
         this.rafId = requestAnimationFrame(tick)
 
+        this.scrollLocks = new Set()
         this.interceptAnchorLinks()
     }
 
@@ -54,11 +55,13 @@ export class SmoothScroll {
         })
     }
 
-    stop() {
+    stop(owner = this) {
+        this.scrollLocks.add(owner)
         this.lenis.stop()
     }
 
-    start() {
+    start(owner = this) {
+        if (!this.scrollLocks.delete(owner) || this.scrollLocks.size > 0) return
         this.lenis.start()
     }
 
